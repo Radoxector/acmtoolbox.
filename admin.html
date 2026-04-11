@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - ACM Toolbox</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: 1px;
+    }
+
+    header .controls {
+      display: flex;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn.logout {
+      background: rgba(255, 107, 107, 0.8);
+      color: white;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    .panel h2 {
+      color: #333;
+      font-size: 22px;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: flex-end;
+    }
+
+    .form-group.full {
+      grid-template-columns: 1fr;
+    }
+
+    label {
+      display: block;
+      color: #555;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .btn.primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn.success {
+      background: #51cf66;
+      color: white;
+    }
+
+    .btn.danger {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-top: 15px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #d3f9d8;
+      color: #2b8a3e;
+      border: 1px solid #b2f2bb;
+      display: block;
+    }
+
+    .status-message.error {
+      background: #ffe3e3;
+      color: #c92a2a;
+      border: 1px solid #ffa8a8;
+      display: block;
+    }
+
+    .status-message.loading {
+      background: #e7f5ff;
+      color: #1971c2;
+      border: 1px solid #b3d9ff;
+      display: block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table th {
+      background: #f5f7fa;
+      color: #333;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #ddd;
+    }
+
+    table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    table tr:hover {
+      background: #f9fafb;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .badge.active {
+      background: #d3f9d8;
+      color: #2b8a3e;
+    }
+
+    .badge.limited {
+      background: #ffe3e3;
+      color: #c92a2a;
+    }
+
+    .info-box {
+      background: #e7f5ff;
+      border-left: 4px solid #1971c2;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      color: #1971c2;
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      main {
+        margin: 20px auto;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .form-group {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        justify-content: stretch;
+      }
+
+      .form-actions .btn {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙ Admin Panel</h1>
+    <div class="controls">
+      <button class="btn secondary" onclick="goToDashboard()">← Back to Dashboard</button>
+      <button class="btn logout" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Grant Unfolds Panel -->
+    <div class="panel">
+      <h2>🎁 Grant Unfolds to User</h2>
+      <div class="info-box">
+        ℹ️ Set the number of available unfolds for any user. This resets and grants them the specified amount.
+      </div>
+
+      <div class="form-group">
+        <div>
+          <label for="grantUsername">Target Username</label>
+          <input type="text" id="grantUsername" placeholder="e.g., demo" />
+        </div>
+        <div>
+          <label for="grantAmount">Number of Unfolds</label>
+          <input type="number" id="grantAmount" placeholder="5" min="0" max="100" value="5" />
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn primary" onclick="grantUnfolds()">Grant Unfolds</button>
+      </div>
+
+      <div id="grantStatus" class="status-message"></div>
+    </div>
+
+    <!-- Reset Rate Limit Panel -->
+    <div class="panel">
+      <h2>🔄 Reset User Rate Limit</h2>
+      <div class="info-box">
+        ℹ️ Reset a user's daily rate limit so they start fresh with 5 unfolds. Use this for testing.
+      </div>
+
+      <div class="form-group">
+        <div>
+          <label for="resetUsername">Target Username</label>
+          <input type="text" id="resetUsername" placeholder="e.g., demo" />
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn success" onclick="resetLimit()">Reset Rate Limit</button>
+      </div>
+
+      <div id="resetStatus" class="status-message"></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="panel">
+      <h2>⚡ Quick Actions</h2>
+      <div class="info-box">
+        ℹ️ Common admin tasks for testing and demo purposes.
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+        <button class="btn primary" style="padding: 12px; font-size: 14px;" onclick="quickGrant('demo', 5)">
+          ✓ Give demo 5 unfolds
+        </button>
+        <button class="btn primary" style="padding: 12px; font-size: 14px;" onclick="quickGrant('admin', 10)">
+          ✓ Give admin 10 unfolds
+        </button>
+        <button class="btn success" style="padding: 12px; font-size: 14px;" onclick="quickReset('demo')">
+          ✓ Reset demo unfolds
+        </button>
+        <button class="btn success" style="padding: 12px; font-size: 14px;" onclick="quickReset('admin')">
+          ✓ Reset admin unfolds
+        </button>
+      </div>
+    </div>
+
+    <!-- Admin Info Panel -->
+    <div class="panel">
+      <h2>ℹ️ Admin Information</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <h3 style="color: #666; font-size: 14px; margin-bottom: 8px;">Default Admin Account</h3>
+          <p style="color: #333; font-size: 14px;"><strong>Username:</strong> admin</p>
+          <p style="color: #333; font-size: 14px;"><strong>Password:</strong> admin</p>
+        </div>
+        <div>
+          <h3 style="color: #666; font-size: 14px; margin-bottom: 8px;">Demo Account</h3>
+          <p style="color: #333; font-size: 14px;"><strong>Username:</strong> demo</p>
+          <p style="color: #333; font-size: 14px;"><strong>Password:</strong> demo</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // MUST define API_URL before loading auth.js
+    window.API_URL = 'http://127.0.0.1:8789';
+  </script>
+
+  <script src="auth.js"></script>
+  <script>
+    // Check if user is admin on page load
+    window.addEventListener('load', () => {
+      if (!isAuthenticated()) {
+        console.log('[ADMIN] Not authenticated, redirecting to login');
+        window.location.href = './login.html';
+        return;
+      }
+
+      if (!isAdmin()) {
+        console.log('[ADMIN] User is not admin, redirecting to dashboard');
+        alert('Access denied. Admin privileges required.');
+        window.location.href = './dashboard.html';
+        return;
+      }
+
+      console.log('[ADMIN] Admin access confirmed');
+
+      // Setup logout button
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to logout?')) {
+          logoutUser();
+        }
+      });
+    });
+
+    async function grantUnfolds() {
+      const username = document.getElementById('grantUsername').value.trim();
+      const unfolds = parseInt(document.getElementById('grantAmount').value) || 0;
+      const statusEl = document.getElementById('grantStatus');
+
+      if (!username) {
+        showStatus(statusEl, 'error', '❌ Please enter a username');
+        return;
+      }
+
+      if (unfolds < 0 || unfolds > 100) {
+        showStatus(statusEl, 'error', '❌ Unfolds must be between 0 and 100');
+        return;
+      }
+
+      showStatus(statusEl, 'loading', '⏳ Granting unfolds...');
+
+      try {
+        const response = await apiCall('POST', '/api/admin/grant-unfolds', {
+          target_user: username,
+          unfolds: unfolds,
+        });
+
+        showStatus(statusEl, 'success', `✓ ${response.message}`);
+        document.getElementById('grantUsername').value = '';
+        document.getElementById('grantAmount').value = '5';
+
+        console.log('[ADMIN] Grant response:', response);
+      } catch (err) {
+        showStatus(statusEl, 'error', `❌ Error: ${err.message}`);
+        console.error('[ADMIN] Grant error:', err);
+      }
+    }
+
+    async function resetLimit() {
+      const username = document.getElementById('resetUsername').value.trim();
+      const statusEl = document.getElementById('resetStatus');
+
+      if (!username) {
+        showStatus(statusEl, 'error', '❌ Please enter a username');
+        return;
+      }
+
+      showStatus(statusEl, 'loading', '⏳ Resetting rate limit...');
+
+      try {
+        const response = await apiCall('POST', '/api/admin/reset-limit', {
+          target_user: username,
+        });
+
+        showStatus(statusEl, 'success', `✓ ${response.message}`);
+        document.getElementById('resetUsername').value = '';
+
+        console.log('[ADMIN] Reset response:', response);
+      } catch (err) {
+        showStatus(statusEl, 'error', `❌ Error: ${err.message}`);
+        console.error('[ADMIN] Reset error:', err);
+      }
+    }
+
+    function quickGrant(username, amount) {
+      document.getElementById('grantUsername').value = username;
+      document.getElementById('grantAmount').value = amount;
+      grantUnfolds();
+    }
+
+    async function quickReset(username) {
+      document.getElementById('resetUsername').value = username;
+      resetLimit();
+    }
+
+    function showStatus(element, type, message) {
+      element.className = `status-message ${type}`;
+      element.textContent = message;
+    }
+
+    function goToDashboard() {
+      window.location.href = './dashboard.html';
+    }
+  </script>
+</body>
+</html>

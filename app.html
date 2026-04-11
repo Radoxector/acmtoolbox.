@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACM Unfolder — App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script>
+    // API URL Configuration
+    // Replace 'YOUR_WORKER_URL.workers.dev' with your actual Cloudflare Worker URL
+    // After deploying backend, update this line and push to GitHub
+    const API_URL = 'https://acm-unfolder-api.h24111.workers.dev';
+  </script>
+</head>
+<body>
+  <!-- Check authentication on page load -->
+  <script src="./auth.js"></script>
+  <script>
+    if (!isAuthenticated()) {
+      redirectToLogin();
+    }
+  </script>
+
+  <!-- ═══════════════════ HEADER ═════════════════════════════════════ -->
+  <header class="header">
+    <div class="logo">ACM<em>unfolder</em></div>
+    <div class="h-sep"></div>
+
+    <div class="file-zone">
+      <button class="btn" id="loadJsonBtn" title="Upload custom JSON model">⬆ Load JSON</button>
+      <button class="btn" id="loadDemoBtn" title="Load U-channel demo">Demo</button>
+      <span class="fname" id="fileName">No model loaded</span>
+    </div>
+
+    <div class="hdr-actions">
+      <div class="user-info">
+        <span class="user-badge">
+          <span id="usernameDisplay">—</span>
+          <span id="unfoldCounter" class="unfolds-remaining">5/5</span>
+        </span>
+      </div>
+      <div class="h-sep"></div>
+      <button class="btn btn-sm" id="toolkitsBtn" title="Back to dashboard">🏠 Toolkits</button>
+      <button class="btn btn-sm danger" id="logoutBtn" title="Logout">↪ Logout</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════ MAIN SPLIT PANES ═════════════════════════ -->
+  <div class="main-container">
+    <div class="split-panes" id="mainArea">
+      <!-- 3D VIEWER -->
+      <div class="pane pane-3d" id="pane3d">
+        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
+          <span>3D PREVIEW — Drag to rotate, scroll to zoom</span>
+          <button class="btn btn-sm" id="resetCameraBtn" title="Reset camera view">🔄 Reset View</button>
+        </div>
+        <canvas id="canvas3d"></canvas>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="divider" id="splitDrag"></div>
+
+      <!-- 2D VIEWER -->
+      <div class="pane pane-2d" id="pane2d">
+        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500;">
+          2D FLAT PATTERN — Scroll to zoom, drag to pan
+        </div>
+        <div class="svg-viewer" id="svgViewer">
+          <div id="empty2d" style="text-align: center; color: var(--muted);">
+            <div style="font-size: 48px; opacity: 0.5; margin-bottom: 12px;">📐</div>
+            <p>Load a model and click <strong>Unfold</strong> to see the 2D pattern</p>
+          </div>
+          <div id="svgLayer" style="display: none;"></div>
+          <div class="svg-controls">
+            <button class="btn btn-sm" id="zoomIn" title="Zoom in">+</button>
+            <button class="btn btn-sm" id="zoomFit" title="Fit to view">⊡</button>
+            <button class="btn btn-sm" id="zoomOut" title="Zoom out">−</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="divider" id="splitDrag2"></div>
+
+      <!-- LIBRARY PANEL -->
+      <div class="pane pane-library" id="paneLibrary">
+        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500;">
+          MODEL LIBRARY
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          <!-- Library dropdown selector -->
+          <div style="padding: 8px 12px; border-bottom: 1px solid var(--border);">
+            <button class="btn btn-sm" id="libraryDropdownBtn" style="width: 100%;">📦 Models ▼</button>
+          </div>
+          <!-- Library slots grid -->
+          <div id="librarySlots" style="flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr; gap: 8px;">
+            <!-- Slots will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ CONTROLS BAR ═════════════════════════════ -->
+    <div class="controls-bar">
+      <div class="control-section">
+        <div style="font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Dimensions (mm)</div>
+        <div class="control-group">
+          <div class="control-field">
+            <label class="control-label">Width</label>
+            <input type="number" id="dimX" class="control-input" value="200" min="1" step="0.5">
+          </div>
+          <div class="control-field">
+            <label class="control-label">Depth</label>
+            <input type="number" id="dimY" class="control-input" value="100" min="1" step="0.5">
+          </div>
+          <div class="control-field">
+            <label class="control-label">Height</label>
+            <input type="number" id="dimZ" class="control-input" value="75" min="1" step="0.5">
+          </div>
+        </div>
+      </div>
+
+      <div style="width: 1px; height: 60px; background: var(--border); margin: 0 12px;"></div>
+
+      <div class="control-section">
+        <div style="font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Material</div>
+        <div class="control-group">
+          <div class="control-field">
+            <label class="control-label">Color</label>
+            <input type="color" id="colorInput" class="control-input" value="#4a90e2" style="width: 40px; cursor: pointer; height: 28px;">
+          </div>
+          <button class="btn btn-sm" id="wireframeToggle" title="Toggle wireframe overlay">📊 Wireframe</button>
+        </div>
+      </div>
+
+      <div style="flex: 1;"></div>
+
+      <div class="control-section main-actions">
+        <button class="btn primary btn-lg" id="unfoldBtn" disabled>▶ Unfold</button>
+        <button class="btn btn-lg" id="downloadBtn" disabled>↓ Download SVG</button>
+      </div>
+
+      <div style="flex: 1;"></div>
+
+    <!-- ═══════════════════ STATUS BAR ═════════════════════════════ -->
+    <div class="status-bar">
+      <div class="stat-item"><span>Vertices:</span><span class="stat-v" id="stV">—</span></div>
+      <div class="stat-item"><span>Faces:</span><span class="stat-v" id="stF">—</span></div>
+      <div class="stat-item"><span>2D Edges:</span><span class="stat-v" id="stE">—</span></div>
+      <div class="stat-item"><span>Islands:</span><span class="stat-v" id="stI">—</span></div>
+      <span class="status-msg" id="statusMsg">Ready. Load a model or try the demo.</span>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".json" hidden>
+  <div class="toast" id="toast"></div>
+
+  <!-- Help Modal -->
+  <div class="modal-bg" id="helpModal">
+    <div class="modal">
+      <div class="modal-hdr">
+        <span class="modal-title">ACM Unfolder — Guide</span>
+        <button class="btn btn-sm" onclick="document.getElementById('helpModal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3>Workflow</h3>
+        <p><strong>1. Load a Model</strong><br>
+        Use the "Load JSON" button to upload a model file exported from Blender, or select from the Models dropdown, or click "Demo" for a sample.</p>
+
+        <p><strong>2. Adjust Dimensions</strong><br>
+        Set the X (width), Y (depth), and Z (height) values. The 3D model updates in real time.</p>
+
+        <p><strong>3. Configure Unfolding</strong><br>
+        • <strong>Seed face:</strong> Which face to start unfolding from (usually a central or large face)<br>
+        • <strong>Flat angle:</strong> Threshold (degrees) for detecting flat folds (angles close to 0° or 180°)</p>
+
+        <p><strong>4. Click Unfold</strong><br>
+        The 2D flat pattern appears on the right. Red lines = cuts, blue lines = folds with angle labels.</p>
+
+        <p><strong>5. Download SVG</strong><br>
+        Export the 2D pattern as SVG (compatible with Inkscape, CorelDRAW, Adobe Illustrator).</p>
+
+        <h3>JSON Model Format</h3>
+        <pre style="background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 10px; font-size: 11px; overflow-x: auto; color: #a8c0d8;">
+{
+  "name": "My Model",
+  "unit": "mm",
+  "vertices": [[x,y,z], [x,y,z], ...],
+  "faces": [[v0,v1,v2,v3], ...],
+  "seam_edges": [[v0,v1], ...]
+}</pre>
+
+        <h3>Edge Types in 2D Pattern</h3>
+        <ul style="margin-left: 16px;">
+          <li><strong style="color: var(--cut-red);">Red lines:</strong> Cut edges (sheet separates here)</li>
+          <li><strong style="color: var(--fold-blue);">Blue lines:</strong> Fold/bend edges with dihedral angle</li>
+          <li><strong style="color: var(--muted);">Gray dashed:</strong> Seam edges (internal folding)</li>
+        </ul>
+
+        <h3>Fold Direction Labels</h3>
+        <p>On blue fold lines, the angle is labeled. Direction:
+          <br>• <strong>VALLEY:</strong> Concave/inward fold
+          <br>• <strong>MOUNTAIN:</strong> Convex/outward fold
+          <br>• <strong>FLAT:</strong> Minimal angle (&lt;threshold or &gt;180°−threshold)</p>
+
+        <h3>Tips</h3>
+        <ul style="margin-left: 16px;">
+          <li>Ensure face normals point outward in Blender (Edit Mode → Mesh → Normals → Recalculate Outside)</li>
+          <li>Mark seam edges in Blender with <code style="background: var(--panel2); padding: 2px 4px; border-radius: 2px;">U → Mark Seam</code></li>
+          <li>For complex models, adjust the seed face if you see overlaps in the 2D pattern</li>
+          <li>Use the dimension sliders to scale the model before unfolding</li>
+        </ul>
+
+        <h3>Rate Limiting</h3>
+        <p>Free tier users have <strong>5 unfolds per day</strong>. The remaining count is displayed in the header. Counter resets at midnight UTC.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ THREE.JS ═════════════════════════════════════ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- App Logic -->
+  <script>
+    "use strict";
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Global State
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    const state = {
+      modelData: null,
+      originalVerts: [],
+      currentVerts: [],
+      currentFaces: [],
+      seamEdgeSet: new Set(),
+      unfoldResult: null,
+      svgString: null,
+      scene: null,
+      camera: null,
+      renderer: null,
+      mesh: null,
+      svgZoom: 1,
+      svgPan: { x: 0, y: 0 },
+      orbitControls: { yaw: 0, pitch: 0.5, distance: 300 },
+      materialColor: 0x4a90e2,
+      initialCameraPos: { x: 0, y: 0, z: 0 },
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Math & Geometry Helpers
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    const EdgeType = { CUT: 0, FOLD: 1, SEAM_CUT: 2 };
+    const FoldDirection = { FLAT: 0, VALLEY: 1, MOUNTAIN: 2 };
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Three.js 3D Viewer Setup
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    function init3D() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) {
+        console.error('[3D] Canvas element not found!');
+        return;
+      }
+
+      state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+      state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      state.renderer.setClearColor(0x808080, 1); // Professional grey background
+      state.renderer.shadowMap.enabled = true;
+      state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      state.scene = new THREE.Scene();
+
+      // Perspective camera for natural-looking 3D view
+      const canvas_width = canvas.offsetWidth;
+      const canvas_height = canvas.offsetHeight;
+      state.camera = new THREE.PerspectiveCamera(
+        45,
+        canvas_width / canvas_height,
+        0.1,
+        10000
+      );
+      state.camera.position.set(50, 40, 50);
+      state.camera.lookAt(0, 0, 0);
+      state.initialCameraPos = { x: 50, y: 40, z: 50 };
+
+      // Professional lighting setup
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+      state.scene.add(ambientLight);
+
+      const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.1);
+      state.scene.add(hemisphereLight);
+
+      const shadowLight = new THREE.DirectionalLight(0xffffff, 0.1);
+      shadowLight.position.set(10, 100, 30);
+      shadowLight.castShadow = true;
+      shadowLight.shadow.camera.left = -100;
+      shadowLight.shadow.camera.right = 100;
+      shadowLight.shadow.camera.top = 100;
+      shadowLight.shadow.camera.bottom = -100;
+      shadowLight.shadow.mapSize.width = 2048;
+      shadowLight.shadow.mapSize.height = 2048;
+      state.scene.add(shadowLight);
+
+      // Additional fill lights for better depth visualization
+      const fillLight1 = new THREE.PointLight(0x8899ff, 0.4, 200);
+      fillLight1.position.set(-80, 50, -80);
+      state.scene.add(fillLight1);
+
+      const fillLight2 = new THREE.PointLight(0xff9988, 0.3, 150);
+      fillLight2.position.set(80, 30, -60);
+      state.scene.add(fillLight2);
+
+      // Ground plane - receives shadows
+      const groundGeometry = new THREE.PlaneGeometry(200, 200, 1, 1);
+      const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.2 });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.receiveShadow = true;
+      ground.position.y = 0;
+      ground.rotation.x = -Math.PI / 2;
+      state.scene.add(ground);
+
+      // Handle window resize
+      const onWindowResize = () => {
+        const newWidth = canvas.offsetWidth;
+        const newHeight = canvas.offsetHeight;
+        
+        state.camera.aspect = newWidth / newHeight;
+        state.camera.updateProjectionMatrix();
+        state.renderer.setSize(newWidth, newHeight);
+      };
+
+      window.addEventListener('resize', onWindowResize);
+      onWindowResize();
+      animate();
+      
+      // Disable context menu
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+      
+      console.log('[3D] Perspective 3D viewer initialized successfully');
+    }
+
+    function onWindowResize() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) return;
+      
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      
+      if (w > 0 && h > 0) {
+        state.camera.aspect = w / h;
+        state.camera.updateProjectionMatrix();
+        state.renderer.setSize(w, h);
+        console.log(`[3D] Canvas resized to ${w}x${h}`);
+      } else {
+        console.warn(`[3D] Canvas has invalid dimensions: ${w}x${h}`);
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      state.renderer.render(state.scene, state.camera);
+    }
+
+    function createFaceWireframeGeometry(faces, vertices) {
+      // Extract unique edges from faces
+      const edgeSet = new Set();
+      const edgePositions = [];
+
+      for (let i = 0; i < faces.length; i++) {
+        const face = faces[i];
+        // Each face is [v0, v1, v2, ...]
+        for (let j = 0; j < face.length; j++) {
+          const v1 = face[j];
+          const v2 = face[(j + 1) % face.length];
+          
+          // Create a unique edge key (sort indices to avoid duplicates)
+          const key = v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
+          
+          if (!edgeSet.has(key)) {
+            edgeSet.add(key);
+            
+            // Add both vertices of the edge
+            const vertex1 = vertices[v1];
+            const vertex2 = vertices[v2];
+            
+            edgePositions.push(vertex1[0], vertex1[1], vertex1[2]);
+            edgePositions.push(vertex2[0], vertex2[1], vertex2[2]);
+          }
+        }
+      }
+
+      // Create buffer geometry
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edgePositions), 3));
+      
+      return geometry;
+    }
+
+    function buildModel3D(vertices, faces) {
+      // Remove old mesh
+      if (state.mesh) {
+        state.scene.remove(state.mesh);
+        state.mesh.geometry.dispose();
+        state.mesh.material.dispose();
+        if (state.meshWireframe) {
+          state.scene.remove(state.meshWireframe);
+          state.meshWireframe.geometry.dispose();
+          state.meshWireframe.material.dispose();
+        }
+      }
+
+      // Build geometry
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.flat()), 3));
+
+      const indices = [];
+      faces.forEach(face => {
+        for (let i = 0; i < face.length - 2; i++) {
+          indices.push(face[0], face[i + 1], face[i + 2]);
+        }
+      });
+      geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+
+      // Compute vertex normals for smooth shading with emphasis on edges
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+
+      // Main material: solid color with metallic car matte finish + ambient occlusion
+      state.meshMaterial = new THREE.MeshStandardMaterial({
+        color: state.materialColor,
+        metalness: 0.3,
+        roughness: 0.6,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.4,
+        side: THREE.DoubleSide,
+        castShadow: true,
+        receiveShadow: true,
+      });
+
+      state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
+      state.mesh.castShadow = true;
+      state.mesh.receiveShadow = true;
+      // Position model ABOVE the grid
+      state.mesh.position.y = 8;
+      state.scene.add(state.mesh);
+
+      // Wireframe overlay - only show edges of original faces (not triangulations)
+      const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
+      const wireframeMaterial = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.5,
+        linewidth: 2,
+        fog: false,
+      });
+
+      state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+      state.meshWireframe.visible = false;
+      state.meshWireframe.position.y = 8;
+      state.scene.add(state.meshWireframe);
+
+      // Fit camera to model - center on X/Z, position above ground on Y
+      const box = new THREE.Box3().setFromObject(state.mesh);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      // Center horizontally (X, Z) and position above ground (Y = 8)
+      state.mesh.position.set(-center.x, 8, -center.z);
+      state.meshWireframe.position.set(-center.x, 8, -center.z);
+
+      // Setup smooth orbit controls
+      setupOrbitControls();
+    }
+
+    function setupOrbitControls() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) return;
+
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+      const rotationSpeed = 0.008; // Smooth rotation speed
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 2) return; // Ignore right-click
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging || !state.mesh) return;
+
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+
+        // Apply smooth rotation
+        state.orbitControls.yaw += deltaX * rotationSpeed;
+        state.orbitControls.pitch += deltaY * rotationSpeed;
+
+        // Clamp pitch to prevent flipping
+        state.orbitControls.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
+
+        updateOrbitCamera();
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+      });
+
+      // Zoom with mouse wheel (free orbit - distance changes)
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) {
+          state.orbitControls.distance /= zoomFactor;
+        } else {
+          state.orbitControls.distance *= zoomFactor;
+        }
+        // Allow much greater zoom range for flexible model scaling
+        state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance, 2000));
+        updateOrbitCamera();
+      });
+
+      function updateOrbitCamera() {
+        // Free orbit - distance varies, model stays centered
+        const radius = state.orbitControls.distance;
+        const x = radius * Math.sin(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+        const y = radius * Math.sin(state.orbitControls.pitch);
+        const z = radius * Math.cos(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+
+        state.camera.position.set(x, y, z);
+        state.camera.lookAt(0, 0, 0);
+      }
+
+      // Initialize camera position
+      updateOrbitCamera();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  SVG 2D Renderer (Client-Side)
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    function renderSVG(result) {
+      const { verts2d, edges, edge_types, fold_angles, fold_directions, bounding_box } = result;
+      const [minX, minY, maxX, maxY] = bounding_box;
+      const w = maxX - minX + 40;
+      const h = maxY - minY + 40;
+      const unit = state.modelData?.unit || 'mm';
+
+      // Center the viewBox
+      let svg = `<svg width="${w}${unit}" height="${h}${unit}" viewBox="${minX - 20} ${minY - 20} ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+      svg += `<!-- Scale: 1 unit = 1${unit} -->\n`;
+      svg += `<defs><style>svg { display: flex; align-items: center; justify-content: center; }</style></defs>\n`;
+      svg += `<rect width="${w}" height="${h}" fill="white"/>`;
+
+      // Seams layer
+      svg += `<g id="flat_seams">`;
+      edges.forEach((edge, i) => {
+        if (edge_types[i] !== EdgeType.SEAM_CUT) return;
+        const [x1, y1] = verts2d[edge[0]];
+        const [x2, y2] = verts2d[edge[1]];
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="1.5,1.5"/>`;
+      });
+      svg += `</g>`;
+
+      // Fold lines layer (BLUE for inner bends)
+      svg += `<g id="fold_lines">`;
+      edges.forEach((edge, i) => {
+        if (edge_types[i] !== EdgeType.FOLD) return;
+        const [x1, y1] = verts2d[edge[0]];
+        const [x2, y2] = verts2d[edge[1]];
+        
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="1"/>`;
+      });
+      svg += `</g>`;
+
+      // Cut lines layer (RED for outer cuts)
+      svg += `<g id="cut_lines">`;
+      edges.forEach((edge, i) => {
+        if (edge_types[i] !== EdgeType.CUT) return;
+        const [x1, y1] = verts2d[edge[0]];
+        const [x2, y2] = verts2d[edge[1]];
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="1"/>`;
+      });
+      svg += `</g>`;
+
+      svg += `</svg>`;
+      return svg;
+    }
+
+    function displaySVG(result) {
+      const svg = renderSVG(result);
+      state.svgString = svg;
+      const svgLayer = document.getElementById('svgLayer');
+      svgLayer.innerHTML = svg;
+      svgLayer.style.display = 'block';
+      document.getElementById('empty2d').style.display = 'none';
+      
+      // Center SVG in viewport
+      const svgElem = svgLayer.querySelector('svg');
+      if (svgElem) {
+        const container = svgLayer.parentElement;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        const svgWidth = svgElem.getBBox().width;
+        const svgHeight = svgElem.getBBox().height;
+        
+        const offsetX = (containerWidth - svgWidth) / 2;
+        const offsetY = (containerHeight - svgHeight) / 2;
+        
+        svgElem.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+      }
+      
+      state.svgZoom = 1;
+      state.svgPan = { x: 0, y: 0 };
+    }
+
+    function updateSVGTransform() {
+      const layer = document.getElementById('svgLayer');
+      const svg = layer.querySelector('svg');
+      if (svg) {
+        svg.style.transform = `translate(${state.svgPan.x}px, ${state.svgPan.y}px) scale(${state.svgZoom})`;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  API Calls
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    async function fetchModelList() {
+      try {
+        const response = await fetch(`${API_URL}/api/models`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const models = await response.json();
+        console.log('[MODELS] Fetched list:', models);
+        return models;
+      } catch (err) {
+        console.error('[MODELS] Failed to load list:', err.message);
+        showToast(`Failed to load models: ${err.message}`, 'error');
+        return [];
+      }
+    }
+
+    async function fetchModel(modelId) {
+      try {
+        console.log(`[MODELS] Loading model: ${modelId}`);
+        const response = await fetch(`${API_URL}/api/models/${modelId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const model = await response.json();
+        console.log(`[MODELS] Loaded ${modelId}:`, model);
+        return model;
+      } catch (err) {
+        console.error(`[MODELS] Failed to load ${modelId}:`, err.message);
+        showToast(`Failed to load model: ${err.message}`, 'error');
+        return null;
+      }
+    }
+
+    async function unfold() {
+      if (!state.modelData) {
+        showToast('No model loaded', 'error');
+        return;
+      }
+
+      const payload = {
+        model: {
+          name: state.modelData.name,
+          unit: state.modelData.unit,
+          vertices: state.currentVerts,
+          faces: state.currentFaces,
+          seam_edges: Array.from(state.seamEdgeSet),
+        },
+      };
+
+      try {
+        const response = await apiCall('POST', '/api/unfold', payload);
+        if (response.error) {
+          showToast(response.message || response.error, 'error');
+          return;
+        }
+
+        state.unfoldResult = response;
+        displaySVG(response);
+        document.getElementById('downloadBtn').disabled = false;
+
+        // Update status
+        document.getElementById('stE').textContent = response.edges.length;
+        document.getElementById('stI').textContent = response.n_islands;
+
+        // Update and store remaining unfolds
+        if (response.remaining_unfolds !== undefined) {
+          const remaining = response.remaining_unfolds;
+          storeRemainingUnfolds(remaining);
+          // Display remaining unfolds (may be unlimited for admins)
+          const displayText = remaining > 999 ? '∞' : remaining;
+          document.getElementById('unfoldCounter').textContent = displayText;
+          
+          if (remaining === 0) {
+            document.getElementById('unfoldBtn').disabled = true;
+            showToast(`Unfolded successfully! Limit reached - ${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}`, 'warning');
+          } else {
+            const countText = remaining > 999 ? 'unlimited' : `${remaining} remaining`;
+            showToast(`Unfolded successfully! (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}, ${countText})`, 'success');
+          }
+        } else {
+          showToast(`Unfolded successfully (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''})`, 'success');
+        }
+      } catch (err) {
+        showToast(`Unfold failed: ${err.message}`, 'error');
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Load Model
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    function loadModel(modelData) {
+      if (!modelData) {
+        console.error('[MODEL] Invalid model data');
+        showToast('Invalid model data', 'error');
+        return;
+      }
+
+      state.modelData = modelData;
+      state.originalVerts = modelData.vertices;
+      // Store seam edges as-is, not converted to strings
+      state.seamEdgeSet = (modelData.seam_edges || []);
+
+      applyScale();
+      document.getElementById('fileName').textContent = modelData.name;
+      document.getElementById('fileName').classList.add('ok');
+      document.getElementById('unfoldBtn').disabled = false;
+      document.getElementById('stV').textContent = modelData.vertices.length;
+      document.getElementById('stF').textContent = modelData.faces.length;
+
+      console.log(`[MODEL] Loaded: ${modelData.name} (V: ${modelData.vertices.length}, F: ${modelData.faces.length})`);
+      showToast(`Loaded: ${modelData.name}`, 'success');
+    }
+
+    function applyScale() {
+      const x = parseFloat(document.getElementById('dimX').value) || 1;
+      const y = parseFloat(document.getElementById('dimY').value) || 1;
+      const z = parseFloat(document.getElementById('dimZ').value) || 1;
+
+      const origBB = {
+        minX: Math.min(...state.originalVerts.map(v => v[0])),
+        maxX: Math.max(...state.originalVerts.map(v => v[0])),
+        minY: Math.min(...state.originalVerts.map(v => v[1])),
+        maxY: Math.max(...state.originalVerts.map(v => v[1])),
+        minZ: Math.min(...state.originalVerts.map(v => v[2])),
+        maxZ: Math.max(...state.originalVerts.map(v => v[2])),
+      };
+
+      const sx = x / (origBB.maxX - origBB.minX || 1);
+      const sy = y / (origBB.maxY - origBB.minY || 1);
+      const sz = z / (origBB.maxZ - origBB.minZ || 1);
+
+      state.currentVerts = state.originalVerts.map(v => [
+        origBB.minX + (v[0] - origBB.minX) * sx,
+        origBB.minY + (v[1] - origBB.minY) * sy,
+        origBB.minZ + (v[2] - origBB.minZ) * sz,
+      ]);
+
+      state.currentFaces = state.modelData.faces;
+      buildModel3D(state.currentVerts, state.currentFaces);
+      state.unfoldResult = null;
+      document.getElementById('svgLayer').innerHTML = '';
+      document.getElementById('svgLayer').style.display = 'none';
+      document.getElementById('empty2d').style.display = 'block';
+      document.getElementById('downloadBtn').disabled = true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  UI Event Handlers
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = `toast show ${type}`;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    function downloadSVG() {
+      if (!state.svgString) return;
+      const blob = new Blob([state.svgString], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${state.modelData.name || 'unfold'}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Initialize
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('[APP] Initializing application...');
+      
+      // Check if still authenticated
+      if (!isAuthenticated() || isTokenExpired()) {
+        console.log('[APP] Not authenticated, redirecting to login');
+        clearToken();
+        redirectToLogin();
+        return;
+      }
+
+      try {
+        // Display username
+        const username = getUsername();
+        console.log(`[APP] User: ${username}`);
+        document.getElementById('usernameDisplay').textContent = username || '?';
+
+        // Display remaining unfolds from last login
+        const remaining = getRemainingUnfolds();
+        console.log(`[APP] Remaining unfolds: ${remaining}`);
+        const displayText = remaining > 999 ? '∞' : remaining;
+        document.getElementById('unfoldCounter').textContent = displayText;
+
+        // Initialize 3D viewer
+        console.log('[APP] Initializing 3D viewer...');
+        init3D();
+
+        // Load model list
+        console.log('[APP] Loading model list...');
+        const models = await fetchModelList();
+        console.log(`[APP] Got ${models.length} models`);
+
+        // Populate library with available models
+        const librarySlots = document.getElementById('librarySlots');
+        if (models && models.length > 0) {
+          models.forEach(modelInfo => {
+            const slotEl = document.createElement('div');
+            slotEl.className = 'library-slot';
+            
+            // Try to load thumbnail if available
+            const thumbnailPath = `${API_URL}/models/${modelInfo.id}.jpg`;
+            const hasImage = modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray'; // Check if custom
+            
+            slotEl.innerHTML = `
+              <div class="library-slot-thumbnail">
+                ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
+                <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
+              </div>
+              <div class="library-slot-name">${modelInfo.name}</div>
+              <div class="library-slot-info">Ready</div>
+            `;
+            
+            slotEl.addEventListener('click', async () => {
+              console.log(`[UI] Loading from library: ${modelInfo.id}`);
+              showToast('Loading model...', 'info');
+              const model = await fetchModel(modelInfo.id);
+              if (model) {
+                loadModel(model);
+              }
+            });
+            
+            librarySlots.appendChild(slotEl);
+          });
+        } else {
+          // Fallback: show demo slot
+          const slotEl = document.createElement('div');
+          slotEl.className = 'library-slot';
+          slotEl.innerHTML = `
+            <div class="library-slot-thumbnail">📦</div>
+            <div class="library-slot-name">U-Channel Demo</div>
+            <div class="library-slot-info">Ready</div>
+          `;
+          slotEl.addEventListener('click', async () => {
+            console.log('[UI] Loading demo model');
+            const model = await fetchModel('u-channel');
+            if (model) loadModel(model);
+          });
+          librarySlots.appendChild(slotEl);
+        }
+
+        // Event listeners
+        document.getElementById('loadJsonBtn').addEventListener('click', () => {
+          console.log('[UI] Load JSON clicked');
+          document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          try {
+            console.log(`[UI] Loading file: ${file.name}`);
+            const text = await file.text();
+            const modelData = JSON.parse(text);
+            loadModel(modelData);
+          } catch (err) {
+            console.error('[UI] Failed to parse JSON:', err);
+            showToast(`Failed to parse JSON: ${err.message}`, 'error');
+          }
+        });
+
+        document.getElementById('loadDemoBtn').addEventListener('click', async () => {
+          console.log('[UI] Load demo clicked');
+          const model = await fetchModel('u-channel');
+          if (model) loadModel(model);
+        });
+
+        document.getElementById('unfoldBtn').addEventListener('click', unfold);
+        document.getElementById('downloadBtn').addEventListener('click', downloadSVG);
+
+        ['dimX', 'dimY', 'dimZ'].forEach(id => {
+          document.getElementById(id).addEventListener('change', applyScale);
+        });
+
+        document.getElementById('toolkitsBtn').addEventListener('click', () => {
+          console.log('[UI] Toolkits button clicked - navigating to dashboard');
+          window.location.href = './dashboard.html';
+        });
+
+        // Wireframe toggle
+        document.getElementById('wireframeToggle').addEventListener('click', () => {
+          if (state.meshWireframe) {
+            state.meshWireframe.visible = !state.meshWireframe.visible;
+            const btn = document.getElementById('wireframeToggle');
+            btn.style.opacity = state.meshWireframe.visible ? '1' : '0.5';
+            console.log(`[UI] Wireframe ${state.meshWireframe.visible ? 'shown' : 'hidden'}`);
+          }
+        });
+
+        // Color picker
+        document.getElementById('colorInput').addEventListener('change', (e) => {
+          state.materialColor = parseInt(e.target.value.slice(1), 16);
+          if (state.meshMaterial) {
+            state.meshMaterial.color.setHex(state.materialColor);
+          }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        console.log('[UI] Logout button clicked');
+        if (confirm('Are you sure you want to logout?')) {
+          logoutUser();
+        }
+      });
+
+      // Reset camera view
+      document.getElementById('resetCameraBtn').addEventListener('click', () => {
+        console.log('[UI] Reset camera view clicked');
+        state.orbitControls.yaw = 0;
+        state.orbitControls.pitch = 0.5;
+        state.orbitControls.distance = 300;
+        
+        const radius = state.orbitControls.distance;
+        const x = radius * Math.sin(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+        const y = radius * Math.sin(state.orbitControls.pitch);
+        const z = radius * Math.cos(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+        
+        state.camera.position.set(x, y, z);
+        state.camera.lookAt(0, 0, 0);
+        showToast('Camera reset', 'info');
+      });
+
+      // SVG zoom controls
+      document.getElementById('zoomIn').addEventListener('click', () => {
+        state.svgZoom *= 1.2;
+        updateSVGTransform();
+      });
+
+      document.getElementById('zoomOut').addEventListener('click', () => {
+        state.svgZoom /= 1.2;
+        updateSVGTransform();
+      });
+
+      document.getElementById('zoomFit').addEventListener('click', () => {
+        state.svgZoom = 1;
+        state.svgPan = { x: 0, y: 0 };
+        updateSVGTransform();
+      });
+
+      // SVG pan
+      let isPanning = false;
+      document.getElementById('svgViewer').addEventListener('mousedown', () => {
+        isPanning = true;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        state.svgPan.x += e.movementX;
+        state.svgPan.y += e.movementY;
+        updateSVGTransform();
+      });
+
+      document.addEventListener('mouseup', () => {
+        isPanning = false;
+      });
+
+      // SVG scroll zoom
+      document.getElementById('svgViewer').addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = 1 + e.deltaY * -0.001;
+        state.svgZoom *= factor;
+        state.svgZoom = Math.max(0.1, Math.min(state.svgZoom, 10));
+        updateSVGTransform();
+      }, { passive: false });
+
+      // Split pane dragging (multiple dividers)
+      let activeDivider = null;
+      let pane1, pane2;
+      const dividers = document.querySelectorAll('.divider');
+      
+      dividers.forEach((divider, index) => {
+        divider.addEventListener('mousedown', (e) => {
+          activeDivider = divider;
+          
+          if (index === 0) {
+            // First divider: between 3D and 2D
+            pane1 = document.getElementById('pane3d');
+            pane2 = document.getElementById('pane2d');
+          } else if (index === 1) {
+            // Second divider: between 2D and Library
+            pane1 = document.getElementById('pane2d');
+            pane2 = document.getElementById('paneLibrary');
+          }
+          
+          e.preventDefault();
+        });
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!activeDivider || !pane1 || !pane2) return;
+        
+        const container = document.getElementById('mainArea');
+        const containerRect = container.getBoundingClientRect();
+        const newX = e.clientX - containerRect.left;
+        
+        const flex1 = parseFloat(window.getComputedStyle(pane1).flex) || 1;
+        const flex2 = parseFloat(window.getComputedStyle(pane2).flex) || 1;
+        
+        const width1 = pane1.offsetWidth;
+        const width2 = pane2.offsetWidth;
+        const totalWidth = width1 + width2;
+        
+        const ratio = newX / totalWidth;
+        const newFlex1 = ratio * (flex1 + flex2);
+        const newFlex2 = (flex1 + flex2) - newFlex1;
+        
+        pane1.style.flex = newFlex1;
+        pane2.style.flex = newFlex2;
+      });
+      
+      document.addEventListener('mouseup', () => {
+        activeDivider = null;
+        pane1 = null;
+        pane2 = null;
+      });
+
+      showToast('Welcome! Load a model or try the demo.', 'info');
+      } catch (err) {
+        console.error('[APP] Initialization error:', err);
+        showToast(`Error initializing app: ${err.message}`, 'error');
+      }
+    });
+  </script>
+</body>
+</html>
