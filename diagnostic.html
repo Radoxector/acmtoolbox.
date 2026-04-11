@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnostic Test - ACM Unfolder</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+      background: #222;
+      color: #0f0;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 { color: #fff; }
+    .section {
+      background: #333;
+      padding: 15px;
+      margin: 15px 0;
+      border: 1px solid #0f0;
+      border-radius: 5px;
+    }
+    .log {
+      background: #111;
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 3px solid #0f0;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+      font-family: 'Courier New', monospace;
+    }
+    button:hover {
+      background: #0a0;
+    }
+    .success { color: #0f0; }
+    .error { color: #f00; }
+    .info { color: #0ff; }
+  </style>
+</head>
+<body>
+  <h1>🔧 ACM Unfolder - Diagnostic Test</h1>
+  
+  <div class="section">
+    <h2>Step 1: Test Login</h2>
+    <button onclick="testLogin()">Test Login (demo/demo)</button>
+    <button onclick="testAdminLogin()">Test Admin Login (admin/admin)</button>
+    <div class="log" id="loginLog"></div>
+  </div>
+
+  <div class="section">
+    <h2>Step 2: Check Token Validity</h2>
+    <button onclick="testTokenCheck()">Check Token Validity</button>
+    <button onclick="testTokenInfo()">Show Token Info</button>
+    <div class="log" id="tokenLog"></div>
+  </div>
+
+  <div class="section">
+    <h2>Step 3: Test Unfold Endpoint</h2>
+    <button onclick="testUnfoldAuth()">Test Unfold Auth</button>
+    <button onclick="testAdminEndpoint()">Test Admin Endpoint</button>
+    <div class="log" id="unfoldLog"></div>
+  </div>
+
+  <div class="section">
+    <h2>Console Output (Open DevTools F12 → Console)</h2>
+    <p class="info">All detailed logs will appear in the browser console and below:</p>
+    <div class="log" id="consoleLog"></div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    // Override console.log to capture it
+    const logs = [];
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    console.log = (...args) => {
+      originalLog(...args);
+      logs.push(args.join(' '));
+      updateConsoleLog();
+    };
+
+    console.error = (...args) => {
+      originalError(...args);
+      logs.push('❌ ' + args.join(' '));
+      updateConsoleLog();
+    };
+
+    function updateConsoleLog() {
+      const consoleLog = document.getElementById('consoleLog');
+      consoleLog.textContent = logs.slice(-50).join('\n');
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    async function testLogin() {
+      const log = document.getElementById('loginLog');
+      log.textContent = '[1] Attempting login as demo/demo...\n';
+      
+      try {
+        const data = await loginUser('demo', 'demo');
+        log.textContent += `[✓] Login successful\n`;
+        log.textContent += `    Username: ${data.username}\n`;
+        log.textContent += `    Token: ${data.token.substring(0, 50)}...\n`;
+        log.textContent += `    Remaining unfolds: ${data.remaining_unfolds}\n`;
+        log.textContent += `    Is admin: ${data.is_admin}\n`;
+        log.classList.add('success');
+      } catch (err) {
+        log.textContent += `[✗] Login failed: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    async function testAdminLogin() {
+      const log = document.getElementById('loginLog');
+      log.textContent = '[1] Attempting login as admin/admin...\n';
+      
+      try {
+        const data = await loginUser('admin', 'admin');
+        log.textContent += `[✓] Login successful\n`;
+        log.textContent += `    Username: ${data.username}\n`;
+        log.textContent += `    Token: ${data.token.substring(0, 50)}...\n`;
+        log.textContent += `    Is admin: ${data.is_admin}\n`;
+        log.classList.add('success');
+      } catch (err) {
+        log.textContent += `[✗] Login failed: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    async function testTokenCheck() {
+      const log = document.getElementById('tokenLog');
+      log.textContent = '[2] Checking token validity...\n';
+      
+      try {
+        const result = await checkTokenValidity();
+        if (result.valid) {
+          log.textContent += `[✓] Token is VALID\n`;
+          log.textContent += `    User: ${result.data?.data?.username}\n`;
+          log.textContent += `    Exp: ${result.data?.data?.exp}\n`;
+          log.textContent += `    Time until expiry: ${result.data?.data?.timeUntilExpiry}s\n`;
+          log.classList.add('success');
+        } else {
+          log.textContent += `[✗] Token is INVALID\n`;
+          log.textContent += `    Reason: ${result.reason || result.error}\n`;
+          if (result.status) log.textContent += `    Status: ${result.status}\n`;
+          log.classList.add('error');
+        }
+      } catch (err) {
+        log.textContent += `[✗] Check failed: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    function testTokenInfo() {
+      const log = document.getElementById('tokenLog');
+      log.textContent = '[2] Token Information\n';
+      
+      const token = getToken();
+      if (!token) {
+        log.textContent += '[✗] No token in localStorage\n';
+        log.classList.add('error');
+        return;
+      }
+
+      try {
+        const parts = token.split('.');
+        const payload = JSON.parse(atob(parts[1]));
+        const now = Math.floor(Date.now() / 1000);
+        
+        log.textContent += `[✓] Token found\n`;
+        log.textContent += `    Username: ${payload.username}\n`;
+        log.textContent += `    Issued at (iat): ${payload.iat}\n`;
+        log.textContent += `    Expires at (exp): ${payload.exp}\n`;
+        log.textContent += `    Current time: ${now}\n`;
+        log.textContent += `    Time until expiry: ${payload.exp - now}s\n`;
+        log.textContent += `    Grace period: 10s\n`;
+        log.textContent += `    Expired with grace? ${payload.exp < (now - 10)}\n`;
+        log.classList.add('success');
+      } catch (err) {
+        log.textContent += `[✗] Error parsing token: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    async function testUnfoldAuth() {
+      const log = document.getElementById('unfoldLog');
+      log.textContent = '[3] Testing unfold endpoint auth...\n';
+      
+      try {
+        const token = getToken();
+        if (!token) {
+          log.textContent += '[✗] No token found. Login first!\n';
+          log.classList.add('error');
+          return;
+        }
+
+        // Just test the auth, don't actually unfold
+        const response = await fetch('http://127.0.0.1:8789/api/unfold', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            model: { name: 'test', unit: 'mm', vertices: [], faces: [] },
+            seed: 0,
+          }),
+        });
+
+        log.textContent += `[?] Response status: ${response.status}\n`;
+        
+        if (response.status === 401) {
+          log.textContent += `[✗] Server rejected token (401 Unauthorized)\n`;
+          const data = await response.json().catch(() => ({}));
+          log.textContent += `    Error: ${data.error || 'Unknown'}\n`;
+          log.classList.add('error');
+        } else if (response.ok) {
+          log.textContent += `[✓] Server accepted token (200 OK)\n`;
+          log.classList.add('success');
+        } else {
+          log.textContent += `[?] Status ${response.status}\n`;
+          const data = await response.json().catch(() => ({}));
+          log.textContent += `    ${JSON.stringify(data)}\n`;
+        }
+      } catch (err) {
+        log.textContent += `[✗] Error: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    async function testAdminEndpoint() {
+      const log = document.getElementById('unfoldLog');
+      log.textContent = '[3] Testing admin grant endpoint...\n';
+      
+      try {
+        const response = await apiCall('POST', '/api/admin/grant-unfolds', {
+          target_user: 'demo',
+          unfolds: 5,
+        });
+        
+        log.textContent += `[✓] Admin endpoint responded\n`;
+        log.textContent += `    ${response.message}\n`;
+        log.classList.add('success');
+      } catch (err) {
+        log.textContent += `[✗] Error: ${err.message}\n`;
+        log.classList.add('error');
+      }
+    }
+
+    console.log('[DIAG] Diagnostic page loaded');
+  </script>
+</body>
+</html>

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACM Toolbox - Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    header h1 {
+      color: white;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 1px;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .user-info {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .admin-badge {
+      background: #ff6b6b;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn.primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn.admin {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .btn.logout {
+      background: rgba(255, 107, 107, 0.8);
+      color: white;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .tool-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+    }
+
+    .tool-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .tool-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .tool-card h2 {
+      color: #333;
+      font-size: 24px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .tool-card p {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 25px;
+    }
+
+    .tool-card .btn {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 15px;
+    }
+
+    .coming-soon-badge {
+      display: inline-block;
+      background: #ffd700;
+      color: #333;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+    }
+
+    .coming-soon .btn {
+      background: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .coming-soon .btn:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    footer {
+      background: rgba(0, 0, 0, 0.1);
+      color: rgba(255, 255, 255, 0.7);
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      header h1 {
+        font-size: 22px;
+      }
+
+      .header-controls {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+
+      main {
+        padding: 40px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🧬 ACM Toolbox</h1>
+    <div class="header-controls">
+      <div class="user-info">
+        <span id="userDisplay">User</span>
+        <span id="adminBadgeDisplay"></span>
+      </div>
+      <button class="btn secondary" id="adminPanelBtn" style="display: none;">⚙ Admin Panel</button>
+      <button class="btn logout" id="logoutBtn">← Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="dashboard-grid">
+      <!-- ACM Unfolder -->
+      <div class="tool-card">
+        <div class="tool-icon">🔓</div>
+        <h2>ACM Unfolder</h2>
+        <p>Advanced mesh unfolding for 3D geometric models. Create perfect flat patterns from complex geometries.</p>
+        <button class="btn primary" onclick="goToApp()">Launch Tool</button>
+      </div>
+
+      <!-- Coming Soon 2 -->
+      <div class="tool-card coming-soon">
+        <div class="tool-icon">⚙️</div>
+        <div class="coming-soon-badge">Coming Soon</div>
+        <h2>Next Toolkit</h2>
+        <p>Advanced feature set for professional mesh processing. Augmented capabilities for precision engineering.</p>
+        <button class="btn" disabled>Launching Soon</button>
+      </div>
+
+      <!-- Coming Soon 3 -->
+      <div class="tool-card coming-soon">
+        <div class="tool-icon">🚀</div>
+        <div class="coming-soon-badge">Coming Soon V3</div>
+        <h2>Advanced Toolkit</h2>
+        <p>Next-generation tools for computational design. Bringing AI-powered geometry optimization to your workflow.</p>
+        <button class="btn" disabled>In Development</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 ACM Toolbox. All rights reserved. | Version 1.0</p>
+  </footer>
+
+  <script>
+    // MUST define API_URL before loading auth.js
+    window.API_URL = 'http://127.0.0.1:8789';
+  </script>
+
+  <script src="auth.js"></script>
+  <script>
+    // Check authentication on page load
+    window.addEventListener('load', () => {
+      if (!isAuthenticated()) {
+        console.log('[DASHBOARD] Not authenticated, redirecting to login');
+        window.location.href = './login.html';
+        return;
+      }
+
+      const username = getUsername();
+      const adminFlag = isAdmin();
+
+      console.log(`[DASHBOARD] User: ${username}, Admin: ${adminFlag}`);
+
+      // Update user display
+      const userDisplay = document.getElementById('userDisplay');
+      userDisplay.textContent = `👤 ${username}`;
+
+      // Show admin badge if user is admin
+      if (adminFlag) {
+        console.log('[DASHBOARD] Admin flag detected, showing admin panel button');
+        const adminBadgeDisplay = document.getElementById('adminBadgeDisplay');
+        adminBadgeDisplay.innerHTML = '<span class="admin-badge">ADMIN</span>';
+        
+        // Show admin panel button
+        document.getElementById('adminPanelBtn').style.display = 'inline-block';
+        console.log('[DASHBOARD] Admin button displayed');
+      } else {
+        console.log('[DASHBOARD] Not an admin, hiding admin panel button');
+      }
+
+      // Setup logout button
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to logout?')) {
+          logoutUser();
+        }
+      });
+
+      // Setup admin panel button
+      document.getElementById('adminPanelBtn').addEventListener('click', () => {
+        window.location.href = './admin.html';
+      });
+    });
+
+    function goToApp() {
+      window.location.href = './app.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACM TOOLBOX — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script>
+    const API_URL = 'https://acm-unfolder-api.h24111.workers.dev';
+  </script>
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .login-logo {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      font-size: 12px;
+      color: var(--text2);
+      letter-spacing: 0.05em;
+    }
+
+    .login-credits {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .contact-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    .contact-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 16px;
+    }
+
+    .contact-btn:hover {
+      background: var(--accent2);
+      transform: translateY(-2px);
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input {
+      height: 40px;
+      padding: 0 12px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 13px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--bg);
+      box-shadow: 0 0 0 2px rgba(79, 172, 247, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: var(--muted);
+    }
+
+    .btn-login {
+      height: 40px;
+      padding: 0 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn-login:hover {
+      background: var(--accent2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(79, 172, 247, 0.3);
+    }
+
+    .btn-login:active {
+      transform: translateY(0);
+    }
+
+    .btn-login:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .form-error {
+      padding: 12px;
+      background: rgba(240, 72, 72, 0.1);
+      color: var(--red);
+      border: 1px solid rgba(240, 72, 72, 0.3);
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+
+    .form-error.show {
+      display: block;
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .form-demo {
+      padding: 12px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--green);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <div class="login-logo">ACM<br>TOOLBOX</div>
+      <div class="login-subtitle">TECHNOLOGY IN ACTION</div>
+    </div>
+
+    <form class="login-form" id="loginForm">
+      <div id="errorMsg" class="form-error"></div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input
+          type="text"
+          id="username"
+          class="form-input"
+          placeholder="Enter username"
+          autocomplete="off"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="Enter password"
+          autocomplete="off"
+          required
+        >
+      </div>
+
+      <button type="submit" class="btn btn-login" id="loginBtn">Sign In</button>
+
+      <div class="form-demo">
+        <strong>Demo:</strong> Use username <code>demo</code>, password <code>demo</code>
+      </div>
+    </form>
+
+    <div class="form-hint">
+      Secure login • Your credentials are verified on the server
+    </div>
+
+    <div class="login-credits">
+      Credits to <strong>@HatemProdz | TIA</strong>
+      <div class="contact-buttons">
+        <a href="https://www.tiktok.com/@hatemprodz" target="_blank" title="TikTok" class="contact-btn">𝕿</a>
+        <a href="https://www.instagram.com/hatemprodz" target="_blank" title="Instagram" class="contact-btn">📷</a>
+        <a href="https://www.youtube.com/@hatemprodz" target="_blank" title="YouTube" class="contact-btn">▶</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="./auth.js"></script>
+  <script>
+    // Check if already authenticated
+    console.log('[LOGIN] Checking auth - token:', !!getToken(), 'expired:', isTokenExpired());
+    if (isAuthenticated() && !isTokenExpired()) {
+      console.log('[LOGIN] Redirecting to app');
+      window.location.href = './app.html';
+    } else {
+      console.log('[LOGIN] Showing login form');
+      if (getToken()) clearToken();
+    }
+
+    // Handle login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const loginBtn = document.getElementById('loginBtn');
+
+      if (!username || !password) {
+        errorMsg.textContent = 'Please enter username and password';
+        errorMsg.classList.add('show');
+        return;
+      }
+
+      // Disable button during request
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+      errorMsg.classList.remove('show');
+
+      try {
+        await loginUser(username, password);
+        // Redirect to dashboard instead of app directly
+        window.location.href = './dashboard.html';
+      } catch (err) {
+        errorMsg.textContent = err.message || 'Login failed. Please try again.';
+        errorMsg.classList.add('show');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
+      }
+    });
+
+    // Focus on first field
+    document.getElementById('username').focus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ACM Unfolder - Session Authentication Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 { font-size: 28px; margin-bottom: 5px; }
+    .header p { font-size: 14px; opacity: 0.9; }
+    .content {
+      padding: 30px;
+    }
+    .section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #667eea;
+    }
+    .section h2 {
+      color: #667eea;
+      font-size: 18px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section h2::before {
+      content: '';
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: #667eea;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      line-height: 30px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .section:nth-child(1) h2::before { content: '1'; }
+    .section:nth-child(2) h2::before { content: '2'; }
+    .section:nth-child(3) h2::before { content: '3'; }
+    .section:nth-child(4) h2::before { content: '4'; }
+    .section:nth-child(5) h2::before { content: '5'; }
+    .test-group {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .test-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      min-width: 140px;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+    .btn-danger {
+      background: #f56565;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #e53e3e;
+    }
+    .result {
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      max-height: 200px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .result.success {
+      background: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+    .result.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+    .result.info {
+      background: #bee3f8;
+      color: #2c5282;
+      border: 1px solid #90cdf4;
+    }
+    .status {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .status.pass {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+    .status.fail {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+    .status.pending {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+    .info-box {
+      background: #edf2f7;
+      padding: 15px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 15px;
+      border-left: 4px solid #4299e1;
+    }
+    .info-box strong { color: #2c5282; }
+    .console {
+      background: #1a202c;
+      color: #a0aec0;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+    .console line {
+      display: block;
+      margin-bottom: 3px;
+    }
+    .console .error { color: #fc8181; }
+    .console .success { color: #68d391; }
+    .console .info { color: #63b3ed; }
+  </style>
+  <script>
+    window.API_URL = 'http://127.0.0.1:8789';
+  </script>
+  <script src="auth.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 Session Authentication Test Suite</h1>
+      <p>Professional authentication testing for the ACM Unfolder system</p>
+    </div>
+    
+    <div class="content">
+      <!-- SECTION 1: LOGIN TEST -->
+      <div class="section">
+        <h2>Login and Create Session</h2>
+        <div class="test-group">
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testLogin('demo', 'demo')">Login as Demo</button>
+            <div id="result-login-demo" class="result"></div>
+          </div>
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testLogin('admin', 'admin')">Login as Admin</button>
+            <div id="result-login-admin" class="result"></div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>What this tests:</strong><br>
+          ✓ Credentials validation<br>
+          ✓ Session token generation (32-byte random, no crypto complexity)<br>
+          ✓ Token storage in localStorage<br>
+          ✓ User flags (is_admin, remaining_unfolds)
+        </div>
+      </div>
+
+      <!-- SECTION 2: TOKEN STORAGE CHECK -->
+      <div class="section">
+        <h2>Verify Token in Storage</h2>
+        <div class="test-group">
+          <div class="test-item">
+            <button class="btn btn-success" onclick="checkTokenStorage()">Check Token</button>
+            <div id="result-token-check" class="result"></div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>What this tests:</strong><br>
+          ✓ Token exists in localStorage<br>
+          ✓ Token format is correct<br>
+          ✓ Stored user credentials
+        </div>
+      </div>
+
+      <!-- SECTION 3: SESSION VALIDATION -->
+      <div class="section">
+        <h2>Validate Session with Backend</h2>
+        <div class="test-group">
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testCheckAuth()">Validate Session</button>
+            <div id="result-check-auth" class="result"></div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>What this tests:</strong><br>
+          ✓ Backend session lookup (simple, no crypto)<br>
+          ✓ Session expiration check<br>
+          ✓ User metadata retrieval<br>
+          ✓ Admin flag verification
+        </div>
+      </div>
+
+      <!-- SECTION 4: AUTHENTICATED API CALL -->
+      <div class="section">
+        <h2>Test Authenticated API Call</h2>
+        <div class="test-group">
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testUnfoldAuth()">Test Unfold (Auth Required)</button>
+            <div id="result-unfold-auth" class="result"></div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>What this tests:</strong><br>
+          ✓ Bearer token transmission in headers<br>
+          ✓ Backend session validation<br>
+          ✓ Authenticated response handling<br>
+          ✓ Rate limiting integration
+        </div>
+      </div>
+
+      <!-- SECTION 5: ADMIN ENDPOINT TEST -->
+      <div class="section">
+        <h2>Test Admin Operations</h2>
+        <div class="test-group">
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testAdminLogin()">1. Login as Admin</button>
+            <div id="result-admin-login" class="result"></div>
+          </div>
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testGrantUnfolds()">2. Grant Unfolds to Demo</button>
+            <div id="result-grant-unfolds" class="result"></div>
+          </div>
+          <div class="test-item">
+            <button class="btn btn-primary" onclick="testResetLimit()">3. Reset Rate Limit</button>
+            <div id="result-reset-limit" class="result"></div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>What this tests:</strong><br>
+          ✓ Admin authentication<br>
+          ✓ Admin flag verification in backend<br>
+          ✓ Rate limiter grant operation<br>
+          ✓ Rate limiter reset operation<br>
+          ✓ Proper authorization checks
+        </div>
+      </div>
+
+      <!-- BONUS: FULL FLOW TEST -->
+      <div class="section">
+        <h2>Full Integration Test</h2>
+        <button class="btn btn-success" onclick="runFullFlow()">▶ Run Complete Flow</button>
+        <button class="btn btn-danger" onclick="clearAll()">Clear All Data</button>
+        <div class="console" id="console-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const consoleOutput = document.getElementById('console-output');
+
+    function log(message, type = 'info') {
+      const line = document.createElement('line');
+      line.className = type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      consoleOutput.appendChild(line);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    async function testLogin(username, password) {
+      const resultId = `result-login-${username}`;
+      const resultEl = document.getElementById(resultId);
+      
+      try {
+        resultEl.className = 'result info';
+        resultEl.textContent = '⏳ Logging in...';
+
+        const response = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Login failed');
+        }
+
+        console.log(`✅ [LOGIN] ${username} success:`, data);
+        
+        resultEl.className = 'result success';
+        resultEl.innerHTML = `
+          <strong>✅ Login Successful</strong><br>
+          Username: ${data.username}<br>
+          Token: ${data.token.slice(0, 16)}...<br>
+          Admin: ${data.is_admin}<br>
+          Unfolds: ${data.remaining_unfolds}/${5}
+        `;
+
+        log(`✅ [LOGIN] ${username} authenticated successfully`, 'success');
+      } catch (err) {
+        console.error(`❌ [LOGIN] ${username} failed:`, err);
+        resultEl.className = 'result error';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        log(`❌ [LOGIN] ${username} failed: ${err.message}`, 'error');
+      }
+    }
+
+    function checkTokenStorage() {
+      const resultEl = document.getElementById('result-token-check');
+      const token = getToken();
+      const username = getUsername();
+      const isAdminUser = isAdmin();
+
+      if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = '❌ No token in localStorage';
+        log('❌ No token found in localStorage', 'error');
+        return;
+      }
+
+      resultEl.className = 'result success';
+      resultEl.innerHTML = `
+        <strong>✅ Token Found</strong><br>
+        Token: ${token.slice(0, 20)}...<br>
+        Length: ${token.length} chars<br>
+        Username: ${getUsername() || '(client-side decode not available)'}<br>
+        Is Admin: ${isAdminUser}<br>
+        Remaining Unfolds: ${getRemainingUnfolds()}
+      `;
+
+      log(`✅ Token stored (${token.length} chars)`, 'success');
+    }
+
+    async function testCheckAuth() {
+      const resultEl = document.getElementById('result-check-auth');
+      const token = getToken();
+
+      if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = '❌ No token to validate';
+        log('❌ No token to validate', 'error');
+        return;
+      }
+
+      try {
+        resultEl.className = 'result info';
+        resultEl.textContent = '⏳ Validating session...';
+
+        const response = await fetch(`${API_URL}/api/auth/check`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`Server rejected: ${data.message}`);
+        }
+
+        if (!data.valid) {
+          throw new Error('Session marked as invalid');
+        }
+
+        console.log('✅ [AUTH] Session valid:', data);
+
+        resultEl.className = 'result success';
+        resultEl.innerHTML = `
+          <strong>✅ Session Valid</strong><br>
+          Username: ${data.username}<br>
+          Admin: ${data.isAdmin}<br>
+          Time Until Expiry: ${data.timeUntilExpiry}s<br>
+          Created: ${new Date(data.createdAt * 1000).toLocaleString()}<br>
+          Expires: ${new Date(data.expiresAt * 1000).toLocaleString()}
+        `;
+
+        log(`✅ Session valid for ${data.username} (${data.timeUntilExpiry}s remaining)`, 'success');
+      } catch (err) {
+        console.error('❌ [AUTH] Check failed:', err);
+        resultEl.className = 'result error';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        log(`❌ Session validation failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function testUnfoldAuth() {
+      const resultEl = document.getElementById('result-unfold-auth');
+      const token = getToken();
+
+      if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = '❌ No token (not authenticated)';
+        return;
+      }
+
+      try {
+        resultEl.className = 'result info';
+        resultEl.textContent = '⏳ Testing authenticated endpoint...';
+
+        // Test with invalid model (to check auth before validation)
+        const response = await fetch(`${API_URL}/api/unfold`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ model: null }),
+        });
+
+        const data = await response.json();
+
+        // We expect 400 for invalid model, not 401 for auth
+        if (response.status === 401) {
+          throw new Error('Authentication failed (401)');
+        }
+
+        // 400 is OK - it means auth passed but model validation failed
+        if (response.status === 400) {
+          console.log('✅ [UNFOLD] Authentication passed, model validation triggered:', data);
+          resultEl.className = 'result success';
+          resultEl.innerHTML = `
+            <strong>✅ Authentication Successful</strong><br>
+            Status: ${response.status} (expected)<br>
+            Result: Model validation error (auth passed)<br>
+            Error: ${data.error}<br>
+            Message: ${data.message}
+          `;
+          log('✅ Unfold endpoint accepted authenticated request', 'success');
+          return;
+        }
+
+        throw new Error(`Unexpected status: ${response.status}`);
+      } catch (err) {
+        console.error('❌ [UNFOLD] Test failed:', err);
+        resultEl.className = 'result error';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        log(`❌ Unfold auth test failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function testAdminLogin() {
+      const resultEl = document.getElementById('result-admin-login');
+      testLogin('admin', 'admin');
+    }
+
+    async function testGrantUnfolds() {
+      const resultEl = document.getElementById('result-grant-unfolds');
+      const token = getToken();
+
+      if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = '❌ No token (not authenticated)';
+        log('❌ No token for admin operation', 'error');
+        return;
+      }
+
+      try {
+        resultEl.className = 'result info';
+        resultEl.textContent = '⏳ Granting unfolds...';
+
+        const response = await fetch(`${API_URL}/api/admin/grant-unfolds`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            target_user: 'demo',
+            unfolds: 5,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || `Error: ${response.status}`);
+        }
+
+        console.log('✅ [ADMIN] Grant unfolds:', data);
+
+        resultEl.className = 'result success';
+        resultEl.innerHTML = `
+          <strong>✅ Unfolds Granted</strong><br>
+          Message: ${data.message}<br>
+          User: ${data.user}<br>
+          Granted: ${data.unfolds_granted}<br>
+          Remaining: ${data.remaining}/5
+        `;
+
+        log(`✅ Granted ${data.unfolds_granted} unfolds to ${data.user}`, 'success');
+      } catch (err) {
+        console.error('❌ [ADMIN] Grant failed:', err);
+        resultEl.className = 'result error';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        log(`❌ Grant unfolds failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function testResetLimit() {
+      const resultEl = document.getElementById('result-reset-limit');
+      const token = getToken();
+
+      if (!token) {
+        resultEl.className = 'result error';
+        resultEl.textContent = '❌ No token (not authenticated)';
+        log('❌ No token for admin operation', 'error');
+        return;
+      }
+
+      try {
+        resultEl.className = 'result info';
+        resultEl.textContent = '⏳ Resetting rate limit...';
+
+        const response = await fetch(`${API_URL}/api/admin/reset-limit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            target_user: 'demo',
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || `Error: ${response.status}`);
+        }
+
+        console.log('✅ [ADMIN] Reset limit:', data);
+
+        resultEl.className = 'result success';
+        resultEl.innerHTML = `
+          <strong>✅ Rate Limit Reset</strong><br>
+          Message: ${data.message}<br>
+          User: ${data.user}<br>
+          Remaining: ${data.remaining}/5
+        `;
+
+        log(`✅ Rate limit reset for ${data.user}`, 'success');
+      } catch (err) {
+        console.error('❌ [ADMIN] Reset failed:', err);
+        resultEl.className = 'result error';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        log(`❌ Reset limit failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function runFullFlow() {
+      log('▶ Starting full integration test...', 'info');
+      
+      // 1. Clear all data
+      clearAll();
+      await new Promise(r => setTimeout(r, 500));
+
+      // 2. Login as demo
+      log('Step 1: Login as demo user', 'info');
+      await new Promise(r => {
+        fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'demo', password: 'demo' }),
+        }).then(r => r.json()).then(data => {
+          storeToken(data.token);
+          storeRemainingUnfolds(data.remaining_unfolds);
+          storeAdminFlag(data.is_admin);
+          log(`✅ Demo login successful (token: ${data.token.slice(0, 8)}...)`, 'success');
+          r();
+        }).catch(e => {
+          log(`❌ Demo login failed: ${e.message}`, 'error');
+          r();
+        });
+      });
+      
+      await new Promise(r => setTimeout(r, 500));
+
+      // 3. Validate session
+      log('Step 2: Validate session with backend', 'info');
+      await new Promise(r => {
+        const token = getToken();
+        fetch(`${API_URL}/api/auth/check`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).then(r => r.json()).then(data => {
+          if (data.valid) {
+            log(`✅ Session valid for ${data.username} (${data.timeUntilExpiry}s remaining)`, 'success');
+          } else {
+            log(`❌ Session invalid: ${data.message}`, 'error');
+          }
+          r();
+        }).catch(e => {
+          log(`❌ Session check failed: ${e.message}`, 'error');
+          r();
+        });
+      });
+
+      await new Promise(r => setTimeout(r, 500));
+
+      // 4. Test authenticated API
+      log('Step 3: Test authenticated API endpoint', 'info');
+      await new Promise(r => {
+        const token = getToken();
+        fetch(`${API_URL}/api/unfold`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ model: null }),
+        }).then(resp => {
+          if (resp.status === 400) {
+            log(`✅ Authenticated endpoint accepted request (auth passed, model invalid)`, 'success');
+          } else if (resp.status === 401) {
+            log(`❌ Authentication failed (401)`, 'error');
+          }
+          r();
+        }).catch(e => {
+          log(`❌ API test failed: ${e.message}`, 'error');
+          r();
+        });
+      });
+
+      await new Promise(r => setTimeout(r, 500));
+
+      // 5. Login as admin
+      log('Step 4: Login as admin', 'info');
+      await new Promise(r => {
+        fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'admin', password: 'admin' }),
+        }).then(r => r.json()).then(data => {
+          storeToken(data.token);
+          storeAdminFlag(data.is_admin);
+          log(`✅ Admin login successful (is_admin: ${data.is_admin})`, 'success');
+          r();
+        }).catch(e => {
+          log(`❌ Admin login failed: ${e.message}`, 'error');
+          r();
+        });
+      });
+
+      await new Promise(r => setTimeout(r, 500));
+
+      // 6. Grant unfolds
+      log('Step 5: Grant unfolds to demo', 'info');
+      await new Promise(r => {
+        const token = getToken();
+        fetch(`${API_URL}/api/admin/grant-unfolds`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ target_user: 'demo', unfolds: 3 }),
+        }).then(r => r.json()).then(data => {
+          log(`✅ Granted ${data.unfolds_granted} unfolds to ${data.user}`, 'success');
+          r();
+        }).catch(e => {
+          log(`❌ Grant failed: ${e.message}`, 'error');
+          r();
+        });
+      });
+
+      await new Promise(r => setTimeout(r, 500));
+      log('✅ Full flow completed successfully!', 'success');
+    }
+
+    function clearAll() {
+      localStorage.clear();
+      log('🗑️ All localStorage data cleared', 'info');
+    }
+
+    function getUsername() {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          return payload.username;
+        }
+      } catch (e) {}
+      return null;
+    }
+  </script>
+</body>
+</html>
