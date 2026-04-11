@@ -11,7 +11,7 @@ const USERNAME_KEY = 'acm_username';
 // Otherwise try 8789 first (recent wrangler default), then fallback to 8788
 const API_BASE = (typeof window !== 'undefined' && window.API_URL) 
   ? window.API_URL 
-  : 'http://127.0.0.1:8789';
+  : 'https://acm-unfolder-api.h24111.workers.dev';
 
 /**
  * Store JWT token in localStorage
