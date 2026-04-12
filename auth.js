@@ -8,10 +8,22 @@ const IS_ADMIN_KEY = 'acm_is_admin';
 const USERNAME_KEY = 'acm_username';
 
 // Use window.API_URL if set (set before loading this script)
-// Otherwise try 8789 first (recent wrangler default), then fallback to 8788
-const API_BASE = (typeof window !== 'undefined' && window.API_URL) 
-  ? window.API_URL 
-  : 'https://acm-unfolder-api.h24111.workers.dev';
+// Otherwise use production API
+// Ensure https:// protocol is always used
+const getApiBase = () => {
+  let url = (typeof window !== 'undefined' && window.API_URL) 
+    ? window.API_URL 
+    : 'https://acm-unfolder-api-production.h24111.workers.dev';
+  // Ensure https://
+  if (url.startsWith('http://')) {
+    url = 'https://' + url.slice(7);
+  } else if (!url.startsWith('https://') && !url.startsWith('http://')) {
+    url = 'https://' + url;
+  }
+  return url;
+};
+
+const API_BASE = getApiBase();
 
 /**
  * Store JWT token in localStorage
@@ -52,10 +64,21 @@ function getRemainingUnfolds() {
 }
 
 /**
- * Clear remaining unfolds
+ * Fetch remaining unfolds directly from the server
+ * @returns {Promise<number|null>} The current number of remaining unfolds
  */
-function clearRemainingUnfolds() {
-  localStorage.removeItem(REMAINING_UNFOLDS_KEY);
+async function fetchRemainingUnfolds() {
+  try {
+    const data = await apiCall('GET', '/api/auth/usage');
+    if (data && typeof data.remaining === 'number') {
+      storeRemainingUnfolds(data.remaining);
+      return data.remaining;
+    }
+    return null;
+  } catch (err) {
+    console.error('[AUTH] Failed to fetch remaining unfolds:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -296,12 +319,20 @@ function resetTestingData() {
   window.location.reload();
 }
 
-// Keyboard shortcut: Ctrl+Shift+R to reset for testing
-if (typeof document !== 'undefined') {
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.shiftKey && e.code === 'KeyR') {
-      e.preventDefault();
-      resetTestingData();
+/**
+ * Fetch remaining unfolds directly from the server
+ * @returns {Promise<number|null>} The current number of remaining unfolds
+ */
+async function fetchRemainingUnfolds() {
+  try {
+    const data = await apiCall('GET', '/api/auth/usage');
+    if (data && typeof data.remaining === 'number') {
+      storeRemainingUnfolds(data.remaining);
+      return data.remaining;
     }
-  });
+    return null;
+  } catch (err) {
+    console.error('[AUTH] Failed to fetch remaining unfolds:', err.message);
+    return null;
+  }
 }

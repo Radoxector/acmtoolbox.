@@ -7,10 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
   <script>
-    // API URL Configuration
-    // Replace 'YOUR_WORKER_URL.workers.dev' with your actual Cloudflare Worker URL
-    // After deploying backend, update this line and push to GitHub
-    const API_URL = 'https://acm-unfolder-api.h24111.workers.dev';
+    const API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
   </script>
 </head>
 <body>
@@ -825,14 +822,29 @@
         document.getElementById('usernameDisplay').textContent = username || '?';
 
         // Display remaining unfolds from last login
-        const remaining = getRemainingUnfolds();
+        const remaining = await fetchRemainingUnfolds() ?? getRemainingUnfolds();
         console.log(`[APP] Remaining unfolds: ${remaining}`);
         const displayText = remaining > 999 ? '∞' : remaining;
         document.getElementById('unfoldCounter').textContent = displayText;
 
-        // Initialize 3D viewer
-        console.log('[APP] Initializing 3D viewer...');
-        init3D();
+        // Set up periodic refresh (every 30 seconds)
+        setInterval(async () => {
+          const freshRemaining = await fetchRemainingUnfolds();
+          if (freshRemaining !== null) {
+            const freshDisplayText = freshRemaining > 999 ? '∞' : freshRemaining;
+            document.getElementById('unfoldCounter').textContent = freshDisplayText;
+          }
+        }, 30000);
+
+        // Refresh on window focus to sync with other tabs
+        window.addEventListener('focus', async () => {
+          console.log('[APP] Window focused, refreshing unfold count...');
+          const freshRemaining = await fetchRemainingUnfolds();
+          if (freshRemaining !== null) {
+            const freshDisplayText = freshRemaining > 999 ? '∞' : freshRemaining;
+            document.getElementById('unfoldCounter').textContent = freshDisplayText;
+          }
+        });
 
         // Load model list
         console.log('[APP] Loading model list...');
