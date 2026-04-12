@@ -60,7 +60,37 @@
 
   <script src="auth.js"></script>
   <script>
-    // Check if user is admin on page load
+    async function registerUser() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const isAdmin = document.getElementById('isAdmin').checked;
+      const statusEl = document.getElementById('registerMsg');
+
+      if (!username || !password) {
+        statusEl.textContent = '❌ Please enter username and password';
+        statusEl.className = 'admin-msg error';
+        return;
+      }
+
+      statusEl.textContent = '⏳ Registering user...';
+      statusEl.className = 'admin-msg';
+
+      try {
+        const response = await apiCall('POST', '/api/admin/register-user', {
+          username,
+          password,
+          isAdmin
+        });
+        
+        statusEl.textContent = `✓ ${response.message}`;
+        statusEl.className = 'admin-msg success';
+        document.getElementById('registerForm').reset();
+      } catch (err) {
+        statusEl.textContent = `❌ Error: ${err.message}`;
+        statusEl.className = 'admin-msg error';
+      }
+    }
+
     window.addEventListener('load', () => {
       if (!isAuthenticated() || !isAdmin()) {
         console.log('[ADMIN] Access denied - not authenticated or not admin');
@@ -69,17 +99,17 @@
         return;
       }
 
-      // Setup logout button
       document.getElementById('logoutBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to logout?')) {
           logoutUser();
         }
       });
 
-      // Setup register user button
-      document.getElementById('regUserBtn').addEventListener('click', registerUser);
+      document.getElementById('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        registerUser();
+      });
 
-      // Setup reset limits button
       document.getElementById('resetLimitsBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to reset ALL rate limits? This cannot be undone.')) {
           alert('Functionality coming soon (requires implementation of resetAll)');

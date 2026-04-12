@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
   <script>
-    const API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
+    window.API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
   </script>
 </head>
 <body>
@@ -850,10 +850,15 @@
         console.log('[APP] Loading model list...');
         const models = await fetchModelList();
         console.log(`[APP] Got ${models.length} models`);
+        
+        // IMPORTANT: Initialize 3D viewer BEFORE loading models
+        console.log('[APP] Initializing 3D viewer...');
+        init3D();
 
         // Populate library with available models
         const librarySlots = document.getElementById('librarySlots');
         if (models && models.length > 0) {
+
           models.forEach(modelInfo => {
             const slotEl = document.createElement('div');
             slotEl.className = 'library-slot';
