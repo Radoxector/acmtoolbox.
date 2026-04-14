@@ -199,7 +199,12 @@ async function apiCall(method, path, body = null) {
     }
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      let error;
+      try {
+        error = await response.json();
+      } catch (e) {
+        error = { error: `HTTP ${response.status}` };
+      }
       console.log('[API] Error response:', error);
       throw new Error(error.message || error.error || `HTTP ${response.status}`);
     }

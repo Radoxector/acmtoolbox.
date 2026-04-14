@@ -427,24 +427,21 @@
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
 
-      // Main material: solid color with metallic car matte finish + ambient occlusion
-      state.meshMaterial = new THREE.MeshStandardMaterial({
-        color: state.materialColor,
-        metalness: 0.3,
-        roughness: 0.6,
-        clearcoat: 0.8,
-        clearcoatRoughness: 0.4,
-        side: THREE.DoubleSide,
-        castShadow: true,
-        receiveShadow: true,
-      });
+        // Main material: solid color with metallic car matte finish + ambient occlusion
+        state.meshMaterial = new THREE.MeshStandardMaterial({
+          color: state.materialColor,
+          metalness: 0.3,
+          roughness: 0.6,
+          side: THREE.DoubleSide,
+        });
 
-      state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
-      state.mesh.castShadow = true;
-      state.mesh.receiveShadow = true;
-      // Position model ABOVE the grid
-      state.mesh.position.y = 8;
-      state.scene.add(state.mesh);
+        state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
+        state.mesh.castShadow = true;
+        state.mesh.receiveShadow = true;
+        // Position model ABOVE the grid
+        state.mesh.position.y = 8;
+        state.scene.add(state.mesh);
+
 
       // Wireframe overlay - only show edges of original faces (not triangulations)
       const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
@@ -858,7 +855,6 @@
         // Populate library with available models
         const librarySlots = document.getElementById('librarySlots');
         if (models && models.length > 0) {
-
           models.forEach(modelInfo => {
             const slotEl = document.createElement('div');
             slotEl.className = 'library-slot';
@@ -903,13 +899,13 @@
           });
           librarySlots.appendChild(slotEl);
         }
-
+        
         // Event listeners
         document.getElementById('loadJsonBtn').addEventListener('click', () => {
           console.log('[UI] Load JSON clicked');
           document.getElementById('fileInput').click();
         });
-
+        
         document.getElementById('fileInput').addEventListener('change', async (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -923,25 +919,25 @@
             showToast(`Failed to parse JSON: ${err.message}`, 'error');
           }
         });
-
+        
         document.getElementById('loadDemoBtn').addEventListener('click', async () => {
           console.log('[UI] Load demo clicked');
           const model = await fetchModel('u-channel');
           if (model) loadModel(model);
         });
-
+        
         document.getElementById('unfoldBtn').addEventListener('click', unfold);
         document.getElementById('downloadBtn').addEventListener('click', downloadSVG);
-
+        
         ['dimX', 'dimY', 'dimZ'].forEach(id => {
           document.getElementById(id).addEventListener('change', applyScale);
         });
-
+        
         document.getElementById('toolkitsBtn').addEventListener('click', () => {
           console.log('[UI] Toolkits button clicked - navigating to dashboard');
           window.location.href = './dashboard.html';
         });
-
+        
         // Wireframe toggle
         document.getElementById('wireframeToggle').addEventListener('click', () => {
           if (state.meshWireframe) {
@@ -951,139 +947,140 @@
             console.log(`[UI] Wireframe ${state.meshWireframe.visible ? 'shown' : 'hidden'}`);
           }
         });
-
+        
         // Color picker
         document.getElementById('colorInput').addEventListener('change', (e) => {
           state.materialColor = parseInt(e.target.value.slice(1), 16);
           if (state.meshMaterial) {
             state.meshMaterial.color.setHex(state.materialColor);
           }
-      });
-
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        console.log('[UI] Logout button clicked');
-        if (confirm('Are you sure you want to logout?')) {
-          logoutUser();
+        });
+        
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          console.log('[UI] Logout button clicked');
+          if (confirm('Are you sure you want to logout?')) {
+            logoutUser();
+          }
+        });
+        
+        // Reset camera view
+        document.getElementById('resetCameraBtn').addEventListener('click', () => {
+          console.log('[UI] Reset camera view clicked');
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = 0.5;
+          state.orbitControls.distance = 300;
+          
+          const radius = state.orbitControls.distance;
+          const x = radius * Math.sin(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+          const y = radius * Math.sin(state.orbitControls.pitch);
+          const z = radius * Math.cos(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+          
+          state.camera.position.set(x, y, z);
+          state.camera.lookAt(0, 0, 0);
+          showToast('Camera reset', 'info');
+        });
+        
+        // SVG zoom controls
+        document.getElementById('zoomIn').addEventListener('click', () => {
+          state.svgZoom *= 1.2;
+          updateSVGTransform();
+        });
+        
+        document.getElementById('zoomOut').addEventListener('click', () => {
+          state.svgZoom /= 1.2;
+          updateSVGTransform();
+        });
+        
+        document.getElementById('zoomFit').addEventListener('click', () => {
+          state.svgZoom = 1;
+          state.svgPan = { x: 0, y: 0 };
+          updateSVGTransform();
+        });
+        
+        // SVG pan
+        let isPanning = false;
+        document.getElementById('svgViewer').addEventListener('mousedown', () => {
+          isPanning = true;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+          if (!isPanning) return;
+          state.svgPan.x += e.movementX;
+          state.svgPan.y += e.movementY;
+          updateSVGTransform();
+        });
+        
+        document.addEventListener('mouseup', () => {
+          isPanning = false;
+        });
+        
+        // SVG scroll zoom
+        document.getElementById('svgViewer').addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const factor = 1 + e.deltaY * -0.001;
+          state.svgZoom *= factor;
+          state.svgZoom = Math.max(0.1, Math.min(state.svgZoom, 10));
+          updateSVGTransform();
+        }, { passive: false });
+        
+        // Split pane dragging (multiple dividers)
+        let activeDivider = null;
+        let pane1, pane2;
+        const dividers = document.querySelectorAll('.divider');
+        
+        dividers.forEach((divider, index) => {
+          divider.addEventListener('mousedown', (e) => {
+            activeDivider = divider;
+            
+            if (index === 0) {
+              // First divider: between 3D and 2D
+              pane1 = document.getElementById('pane3d');
+              pane2 = document.getElementById('pane2d');
+            } else if (index === 1) {
+              // Second divider: between 2D and Library
+              pane1 = document.getElementById('pane2d');
+              pane2 = document.getElementById('paneLibrary');
+            }
+            
+            e.preventDefault();
+          });
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+          if (!activeDivider || !pane1 || !pane2) return;
+          
+          const container = document.getElementById('mainArea');
+          const containerRect = container.getBoundingClientRect();
+          const newX = e.clientX - containerRect.left;
+          
+          const flex1 = parseFloat(window.getComputedStyle(pane1).flex) || 1;
+          const flex2 = parseFloat(window.getComputedStyle(pane2).flex) || 1;
+          
+          const width1 = pane1.offsetWidth;
+          const width2 = pane2.offsetWidth;
+          const totalWidth = width1 + width2;
+          
+          const ratio = newX / totalWidth;
+          const newFlex1 = ratio * (flex1 + flex2);
+          const newFlex2 = (flex1 + flex2) - newFlex1;
+          
+          pane1.style.flex = newFlex1;
+          pane2.style.flex = newFlex2;
+        });
+        
+        document.addEventListener('mouseup', () => {
+          activeDivider = null;
+          pane1 = null;
+          pane2 = null;
+        });
+        
+        showToast('Welcome! Load a model or try the demo.', 'info');
+        } catch (err) {
+          console.error('[APP] Initialization error:', err);
+          showToast(`Error initializing app: ${err.message}`, 'error');
         }
       });
-
-      // Reset camera view
-      document.getElementById('resetCameraBtn').addEventListener('click', () => {
-        console.log('[UI] Reset camera view clicked');
-        state.orbitControls.yaw = 0;
-        state.orbitControls.pitch = 0.5;
-        state.orbitControls.distance = 300;
-        
-        const radius = state.orbitControls.distance;
-        const x = radius * Math.sin(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
-        const y = radius * Math.sin(state.orbitControls.pitch);
-        const z = radius * Math.cos(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
-        
-        state.camera.position.set(x, y, z);
-        state.camera.lookAt(0, 0, 0);
-        showToast('Camera reset', 'info');
-      });
-
-      // SVG zoom controls
-      document.getElementById('zoomIn').addEventListener('click', () => {
-        state.svgZoom *= 1.2;
-        updateSVGTransform();
-      });
-
-      document.getElementById('zoomOut').addEventListener('click', () => {
-        state.svgZoom /= 1.2;
-        updateSVGTransform();
-      });
-
-      document.getElementById('zoomFit').addEventListener('click', () => {
-        state.svgZoom = 1;
-        state.svgPan = { x: 0, y: 0 };
-        updateSVGTransform();
-      });
-
-      // SVG pan
-      let isPanning = false;
-      document.getElementById('svgViewer').addEventListener('mousedown', () => {
-        isPanning = true;
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (!isPanning) return;
-        state.svgPan.x += e.movementX;
-        state.svgPan.y += e.movementY;
-        updateSVGTransform();
-      });
-
-      document.addEventListener('mouseup', () => {
-        isPanning = false;
-      });
-
-      // SVG scroll zoom
-      document.getElementById('svgViewer').addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const factor = 1 + e.deltaY * -0.001;
-        state.svgZoom *= factor;
-        state.svgZoom = Math.max(0.1, Math.min(state.svgZoom, 10));
-        updateSVGTransform();
-      }, { passive: false });
-
-      // Split pane dragging (multiple dividers)
-      let activeDivider = null;
-      let pane1, pane2;
-      const dividers = document.querySelectorAll('.divider');
-      
-      dividers.forEach((divider, index) => {
-        divider.addEventListener('mousedown', (e) => {
-          activeDivider = divider;
-          
-          if (index === 0) {
-            // First divider: between 3D and 2D
-            pane1 = document.getElementById('pane3d');
-            pane2 = document.getElementById('pane2d');
-          } else if (index === 1) {
-            // Second divider: between 2D and Library
-            pane1 = document.getElementById('pane2d');
-            pane2 = document.getElementById('paneLibrary');
-          }
-          
-          e.preventDefault();
-        });
-      });
-      
-      document.addEventListener('mousemove', (e) => {
-        if (!activeDivider || !pane1 || !pane2) return;
-        
-        const container = document.getElementById('mainArea');
-        const containerRect = container.getBoundingClientRect();
-        const newX = e.clientX - containerRect.left;
-        
-        const flex1 = parseFloat(window.getComputedStyle(pane1).flex) || 1;
-        const flex2 = parseFloat(window.getComputedStyle(pane2).flex) || 1;
-        
-        const width1 = pane1.offsetWidth;
-        const width2 = pane2.offsetWidth;
-        const totalWidth = width1 + width2;
-        
-        const ratio = newX / totalWidth;
-        const newFlex1 = ratio * (flex1 + flex2);
-        const newFlex2 = (flex1 + flex2) - newFlex1;
-        
-        pane1.style.flex = newFlex1;
-        pane2.style.flex = newFlex2;
-      });
-      
-      document.addEventListener('mouseup', () => {
-        activeDivider = null;
-        pane1 = null;
-        pane2 = null;
-      });
-
-      showToast('Welcome! Load a model or try the demo.', 'info');
-      } catch (err) {
-        console.error('[APP] Initialization error:', err);
-        showToast(`Error initializing app: ${err.message}`, 'error');
-      }
-    });
   </script>
 </body>
 </html>
+

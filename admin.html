@@ -4,15 +4,209 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ACM Toolbox - Admin Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
-  <script>
-    window.API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
-  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: white;
+    }
+
+    header {
+      background: rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 300;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 850px) {
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    h2 {
+      margin-bottom: 25px;
+      font-weight: 400;
+      text-align: center;
+      font-size: 22px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn.primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: #764ba2;
+      transform: translateY(-2px);
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn.danger {
+      background: rgba(244, 67, 54, 0.4);
+      color: #ffcdd2;
+      font-size: 12px;
+      padding: 6px 12px;
+      width: auto;
+    }
+
+    .btn.danger:hover {
+      background: rgba(244, 67, 54, 0.7);
+    }
+
+    .status-msg {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+      font-size: 14px;
+    }
+
+    .status-msg.success {
+      display: block;
+      background: rgba(76, 175, 80, 0.3);
+      color: #c8e6c9;
+    }
+
+    .status-msg.error {
+      display: block;
+      background: rgba(244, 67, 54, 0.3);
+      color: #ffcdd2;
+    }
+
+    .loading-spinner {
+      display: none;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin: 10px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Library management styles */
+    .model-list {
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .model-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .model-info h4 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .model-info p {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+  </style>
 </head>
 <body>
-  <header class="header">
-    <h1>⚙️ Admin Panel</h1>
+  <header>
+    <h1>⚙ Admin Panel</h1>
     <div class="header-controls">
       <button class="btn secondary" onclick="window.location.href='./dashboard.html'">← Dashboard</button>
       <button class="btn logout" id="logoutBtn">← Logout</button>
@@ -20,191 +214,225 @@
   </header>
 
   <main>
-    <div class="admin-container">
-      <section class="admin-section">
-        <h2>👤 Register New User</h2>
-        <p>Manually create accounts for clients. Use secure passwords.</p>
-        
-        <form id="registerForm" class="admin-form">
+    <div class="admin-grid">
+      <!-- Section 1: User Management -->
+      <section class="card">
+        <h2>👤 Register User</h2>
+        <form id="registerForm">
           <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" required placeholder="e.g. client_name">
+            <label>Username</label>
+            <input type="text" id="regUsername" required placeholder="new_user">
           </div>
           <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" required placeholder="Strong password">
+            <label>Password</label>
+            <input type="password" id="regPassword" required placeholder="********">
           </div>
-          <div class="form-group checkbox">
-            <input type="checkbox" id="isAdmin">
-            <label for="isAdmin">Give Admin Privileges</label>
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="regIsAdmin" style="width: auto;">
+            <label for="regIsAdmin" style="margin: 0;">Grant Admin Privileges</label>
           </div>
-          <button type="submit" class="btn primary">Register User</button>
+          <button type="submit" class="btn primary">Create User</button>
+          <div id="regStatus" class="status-msg"></div>
         </form>
-        <div id="registerMsg" class="admin-msg"></div>
       </section>
 
-      <section class="admin-section">
-        <h2>⚡ Quick Actions</h2>
-        <div class="admin-actions-grid">
-          <div class="action-card">
-            <h3>Reset Limits</h3>
-            <p>Reset all rate limits (use with caution)</p>
-            <button class="btn danger" id="resetLimitsBtn">Reset All</button>
+      <!-- Section 2: Model Upload -->
+      <section class="card">
+        <h2>📦 Upload Model</h2>
+        <form id="uploadForm">
+          <div class="form-group">
+            <label>Model Name</label>
+            <input type="text" id="upName" required placeholder="e.g. Corner Bracket">
           </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <input type="text" id="upUnit" required placeholder="mm">
+          </div>
+          <div class="form-group">
+            <label>JSON Model File</label>
+            <input type="file" id="upFile" accept=".json" required>
+          </div>
+          <div class="form-group">
+            <label>Thumbnail (512x512 JPG)</label>
+            <input type="file" id="upThumb" accept="image/jpeg">
+          </div>
+          <button type="submit" class="btn primary" id="upBtn">Upload to Library</button>
+          <div id="upLoader" class="loading-spinner"></div>
+          <div id="upStatus" class="status-msg"></div>
+        </form>
+      </section>
+
+      <!-- Section 3: Model Library Management -->
+      <section class="card full-width">
+        <h2>📚 Model Library</h2>
+        <div id="modelList" class="model-list">
+          <!-- Models will be populated here -->
         </div>
       </section>
     </div>
   </main>
 
-  <div class="toast" id="toast"></div>
-
   <script src="auth.js"></script>
   <script>
-    async function registerUser() {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const isAdmin = document.getElementById('isAdmin').checked;
-      const statusEl = document.getElementById('registerMsg');
+    // MUST define API_URL
+    window.API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
 
-      if (!username || !password) {
-        statusEl.textContent = '❌ Please enter username and password';
-        statusEl.className = 'admin-msg error';
-        return;
-      }
-
-      statusEl.textContent = '⏳ Registering user...';
-      statusEl.className = 'admin-msg';
-
-      try {
-        const response = await apiCall('POST', '/api/admin/register-user', {
-          username,
-          password,
-          isAdmin
-        });
-        
-        statusEl.textContent = `✓ ${response.message}`;
-        statusEl.className = 'admin-msg success';
-        document.getElementById('registerForm').reset();
-      } catch (err) {
-        statusEl.textContent = `❌ Error: ${err.message}`;
-        statusEl.className = 'admin-msg error';
-      }
-    }
-
+    // --- Initialization ---
     window.addEventListener('load', () => {
-      if (!isAuthenticated() || !isAdmin()) {
-        console.log('[ADMIN] Access denied - not authenticated or not admin');
-        alert('Access denied. Admin privileges required');
+      if (!isAuthenticated()) {
         window.location.href = './login.html';
         return;
       }
+      if (!isAdmin()) {
+        alert('Access Denied: Admins only.');
+        window.location.href = './dashboard.html';
+        return;
+      }
 
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to logout?')) {
-          logoutUser();
-        }
-      });
-
-      document.getElementById('registerForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        registerUser();
-      });
-
-      document.getElementById('resetLimitsBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to reset ALL rate limits? This cannot be undone.')) {
-          alert('Functionality coming soon (requires implementation of resetAll)');
-        }
-      });
+      setupListeners();
+      loadLibrary();
     });
-  </script>
 
-  <style>
-    .admin-container {
-      max-width: 800px;
-      width: 100%;
-      padding: 20px;
+    function setupListeners() {
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Logout?')) logoutUser();
+      });
+
+      // User Registration
+      document.getElementById('registerForm').addEventListener('submit', handleRegister);
+
+      // Model Upload
+      document.getElementById('uploadForm').addEventListener('submit', handleUpload);
     }
-    .admin-section {
-      background: rgba(255, 255, 255, 0.95);
-      padding: 30px;
-      border-radius: 16px;
-      margin-bottom: 30px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+    // --- User Management ---
+    async function handleRegister(e) {
+      e.preventDefault();
+      const statusEl = document.getElementById('regStatus');
+      const username = document.getElementById('regUsername').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const isAdmin = document.getElementById('regIsAdmin').checked;
+
+      statusEl.textContent = '⏳ Registering...';
+      statusEl.className = 'status-msg';
+
+      try {
+        const response = await apiCall('POST', '/api/admin/register-user', { username, password, isAdmin });
+        statusEl.textContent = `✅ ${response.message}`;
+        statusEl.className = 'status-msg success';
+        e.target.reset();
+      } catch (err) {
+        statusEl.textContent = `❌ ${err.message}`;
+        statusEl.className = 'status-msg error';
+      }
     }
-    .admin-section h2 {
-      margin-bottom: 20px;
-      color: #333;
+
+    // --- Model Management ---
+    async function loadLibrary() {
+      const listEl = document.getElementById('modelList');
+      listEl.innerHTML = '<p style="text-align:center; opacity: 0.7;">Loading library...</p>';
+
+      try {
+        const models = await apiCall('GET', '/api/models/manifest');
+        listEl.innerHTML = '';
+
+        if (models.length === 0) {
+          listEl.innerHTML = '<p style="text-align:center; opacity: 0.7;">No models in library.</p>';
+          return;
+        }
+
+        models.forEach(model => {
+          const item = document.createElement('div');
+          item.className = 'model-item';
+          item.innerHTML = `
+            <div class="model-info">
+              <h4>${model.name}</h4>
+              <p>${model.unit} | ID: ${model.id}</p>
+            </div>
+            <button class="btn danger" onclick="deleteModel('${model.id}')">Delete</button>
+          `;
+          listEl.appendChild(item);
+        });
+      } catch (err) {
+        listEl.innerHTML = '<p style="color:#ffcdd2; text-align:center">Error loading library.</p>';
+      }
     }
-    .admin-form {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
+
+    async function handleUpload(e) {
+      e.preventDefault();
+      const statusEl = document.getElementById('upStatus');
+      const loader = document.getElementById('upLoader');
+      const btn = document.getElementById('upBtn');
+
+      const name = document.getElementById('upName').value.trim();
+      const unit = document.getElementById('upUnit').value.trim();
+      const file = document.getElementById('upFile').files[0];
+      const thumb = document.getElementById('upThumb').files[0];
+
+      if (!name || !unit || !file) {
+        statusEl.textContent = '❌ Missing required fields';
+        statusEl.className = 'status-msg error';
+        return;
+      }
+
+      // Prepare Multipart Form Data
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('unit', unit);
+      formData.append('modelJson', file);
+      if (thumb) formData.append('thumbnail', thumb);
+
+      // UI Update
+      statusEl.className = 'status-msg';
+      statusEl.textContent = '';
+      loader.style.display = 'block';
+      btn.disabled = true;
+
+      try {
+        // Note: apiCall is optimized for JSON. For Multipart, we use native fetch.
+        const response = await fetch(`${window.API_URL}/api/admin/models/upload`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${getToken()}`
+            // Do NOT set Content-Type here, fetch will set it with boundary for FormData
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          statusEl.textContent = `✅ Model '${name}' uploaded!`;
+          statusEl.className = 'status-msg success';
+          document.getElementById('uploadForm').reset();
+          loadLibrary();
+        } else {
+          throw new Error(result.error || result.message || 'Upload failed');
+        }
+      } catch (err) {
+        statusEl.textContent = `❌ ${err.message}`;
+        statusEl.className = 'status-msg error';
+      } finally {
+        loader.style.display = 'none';
+        btn.disabled = false;
+      }
     }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
+
+    async function deleteModel(id) {
+      if (!confirm(`Delete model '${id}'? This cannot be undone.`)) return;
+
+      try {
+        const response = await apiCall('DELETE', `/api/admin/models/${id}`);
+        if (response.success) {
+          loadLibrary();
+        } else {
+          alert(`Delete failed: ${response.error}`);
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
     }
-    .form-group label {
-      font-weight: 500;
-      color: #555;
-    }
-    .form-group input[type="text"],
-    .form-group input[type="password"] {
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-    }
-    .form-group.checkbox {
-      flex-direction: row;
-      align-items: center;
-      gap: 10px;
-    }
-    .admin-msg {
-      margin-top: 15px;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    .admin-msg.success {
-      background: #d4edda;
-      color: #155724;
-    }
-    .admin-msg.error {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    .admin-actions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-    }
-    .action-card {
-      padding: 20px;
-      border: 1px solid #eee;
-      border-radius: 12px;
-      text-align: center;
-    }
-    .action-card h3 {
-      font-size: 18px;
-      margin-bottom: 10px;
-    }
-    .action-card p {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 15px;
-    }
-    .action-card .btn {
-      width: 100%;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .action-card .btn.danger {
-      background: #ff6b6b;
-      color: white;
-      border: none;
-    }
-  </style>
+  </script>
 </body>
 </html>
