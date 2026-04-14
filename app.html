@@ -438,37 +438,41 @@
         state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
         state.mesh.castShadow = true;
         state.mesh.receiveShadow = true;
-        // Position model ABOVE the grid
-        state.mesh.position.y = 8;
+
+        // Position model at origin (centering is handled by camera focus)
+        state.mesh.position.set(0, 0, 0);
         state.scene.add(state.mesh);
 
+        // Wireframe overlay
+        state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+        state.meshWireframe.visible = true; // Set wireframe ON by default
+        state.meshWireframe.position.set(0, 0, 0);
+        state.scene.add(state.meshWireframe);
 
-      // Wireframe overlay - only show edges of original faces (not triangulations)
-      const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
-      const wireframeMaterial = new THREE.LineBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.5,
-        linewidth: 2,
-        fog: false,
-      });
+        // --- AUTO-FOCUS CAMERA ON BOUNDING BOX ---
+        const box = new THREE.Box3().setFromObject(state.mesh);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
 
-      state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-      state.meshWireframe.visible = false;
-      state.meshWireframe.position.y = 8;
-      state.scene.add(state.meshWireframe);
+        // Move mesh so its center is at (0,0,0) for easier rotation/viewing
+        state.mesh.position.sub(center);
+        state.meshWireframe.position.sub(center);
 
-      // Fit camera to model - center on X/Z, position above ground on Y
-      const box = new THREE.Box3().setFromObject(state.mesh);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      // Center horizontally (X, Z) and position above ground (Y = 8)
-      state.mesh.position.set(-center.x, 8, -center.z);
-      state.meshWireframe.position.set(-center.x, 8, -center.z);
+        // Calculate required camera distance to fit the box
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = state.camera.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(1 / Math.tan(fov / 2)) * maxDim;
+        
+        // Add padding
+        cameraZ *= 1.5;
 
-      // Setup smooth orbit controls
-      setupOrbitControls();
-    }
+        state.camera.position.set(cameraZ, cameraZ, cameraZ);
+        state.camera.lookAt(0, 0, 0);
+        
+        // Setup orbit controls
+        setupOrbitControls();
+      }
+
 
     function setupOrbitControls() {
       const canvas = document.getElementById('canvas3d');
@@ -859,18 +863,18 @@
             const slotEl = document.createElement('div');
             slotEl.className = 'library-slot';
             
-            // Try to load thumbnail if available
-            const thumbnailPath = `${API_URL}/models/${modelInfo.id}.jpg`;
-            const hasImage = modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray'; // Check if custom
-            
-            slotEl.innerHTML = `
-              <div class="library-slot-thumbnail">
-                ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
-                <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
-              </div>
-              <div class="library-slot-name">${modelInfo.name}</div>
-              <div class="library-slot-info">Ready</div>
-            `;
+             // Try to load thumbnail if available
+             const hasImage = !!modelInfo.thumbnail;
+             
+             slotEl.innerHTML = `
+               <div class="library-slot-thumbnail">
+                 ${hasImage ? `<img src="${modelInfo.thumbnail}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
+                 <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
+               </div>
+               <div class="library-slot-name">${modelInfo.name}</div>
+               <div class="library-slot-info">Ready</div>
+             `;
+
             
             slotEl.addEventListener('click', async () => {
               console.log(`[UI] Loading from library: ${modelInfo.id}`);
