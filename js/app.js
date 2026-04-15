@@ -168,17 +168,19 @@ async function initApp() {
       models.forEach(modelInfo => {
         const slotEl = document.createElement('div');
         slotEl.className = 'library-slot';
-        const thumbnailPath = `${window.API_URL}/models/${modelInfo.id}.jpg`;
-        const hasImage = modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray';
-        
+         const hasImage = modelInfo.thumbnail && modelInfo.thumbnail.startsWith('data:');
+         const imgPath = hasImage ? modelInfo.thumbnail : (modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray' ? `${window.API_URL}/models/${modelInfo.id}.jpg` : null);
+         
          slotEl.innerHTML = `
            <div class="library-slot-thumbnail">
-             ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.library-slot-icon').style.display='block'">` : ''}
-             <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
+             ${imgPath ? `<img src="${imgPath}" alt="${modelInfo.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.library-slot-icon').style.display='block'">` : ''}
+             <div class="library-slot-icon" style="display: ${imgPath ? 'none' : 'block'}">📦</div>
            </div>
            <div class="library-slot-name">${modelInfo.name}</div>
            <div class="library-slot-info">Ready</div>
          `;
+
+
 
         
         slotEl.addEventListener('click', async () => {
