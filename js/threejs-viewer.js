@@ -34,9 +34,9 @@ export function init3D() {
   const w = canvas.offsetWidth || 800;
   const h = canvas.offsetHeight || 600;
   state.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 20000);
-  state.camera.position.set(50, 40, 50);
+  state.camera.position.set(150, 120, 150);
   state.camera.lookAt(0, 0, 0);
-  state.initialCameraPos = { x: 50, y: 40, z: 50 };
+  state.initialCameraPos = { x: 150, y: 150, z: 150 };
 
   _setupLighting();
 
@@ -48,11 +48,11 @@ export function init3D() {
   ground.rotation.x = -Math.PI / 2;
   state.scene.add(ground);
 
-  _grid = new THREE.GridHelper(400, 60, 0x444444, 0x333333);
-  _grid.material.transparent = true;
-  _grid.material.opacity = 0.4;
-  _grid.visible = state.showGrid ?? true;
-  state.scene.add(_grid);
+  // _grid = new THREE.GridHelper(400, 60, 0x444444, 0x333333);
+  // _grid.material.transparent = true;
+  // _grid.material.opacity = 0.4;
+  // _grid.visible = state.showGrid ?? true;
+  // state.scene.add(_grid);
 
   _axes = new THREE.AxesHelper(20);
   _axes.visible = state.showAxes ?? true;
@@ -165,8 +165,8 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.25,
-    roughness: 0.55,
+    metalness: 0.15,
+    roughness: 0.7,
     side:      THREE.DoubleSide,
   });
 
@@ -212,10 +212,10 @@ function _updateShadows(box) {
   state.shadowLight.position.set(pad, pad * 1.2, pad * 0.8);
   
   const sc = state.shadowLight.shadow.camera;
-  if (sc) {
+  if (sc && typeof sc.updateProjectionMatrix === 'function') {
     sc.left = -pad; sc.right = pad; sc.top = pad; sc.bottom = -pad;
     sc.near = 1;    sc.far = pad * 5;
-    state.shadowLight.shadow.updateProjectionMatrix();
+    sc.updateProjectionMatrix();
   }
 }
 
@@ -223,7 +223,6 @@ export function fitCameraToBox(box) {
   const size   = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // Calculate distance based on FOV and size
   const fovRad = (state.camera.fov * Math.PI) / 180;
   const dist = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
   
@@ -312,8 +311,8 @@ function _setupOrbitControls() {
       state.orbitControls.pitch += dy * s;
       state.orbitControls.pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
     } else if (t.length === 2 && lastT.length >= 2) {
-      const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[1].clientX)) / 2;
-      const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[1].clientY)) / 2;
+      const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[0].clientX)) / 2;
+      const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[0].clientY)) / 2;
       const ps = (state.orbitControls.distance / 500) * PAN_SPD;
       state.orbitControls.panX += -avgDx * ps;
       state.orbitControls.panY += avgDy * ps;
