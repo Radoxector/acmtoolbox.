@@ -1,6 +1,6 @@
 // frontend/js/threejs-viewer.js
 
-import { state, EdgeType } from './state.js';
+import { state } from './state.js';
 
 export function init3D() {
   const canvas = document.getElementById('canvas3d');
@@ -11,38 +11,34 @@ export function init3D() {
 
   state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  state.renderer.setClearColor(0x808080, 1); // Professional grey background
+  state.renderer.setClearColor(0x808080, 1); 
   state.renderer.shadowMap.enabled = true;
   state.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   state.scene = new THREE.Scene();
 
-  // Perspective camera
   const canvas_width = canvas.offsetWidth;
   const canvas_height = canvas.offsetHeight;
   state.camera = new THREE.PerspectiveCamera(
     45,
     canvas_width / canvas_height,
     0.1,
-    20000 // Increased far plane for large models
+    20000 
   );
   state.camera.position.set(50, 40, 50);
   state.camera.lookAt(0, 0, 0);
   state.initialCameraPos = { x: 50, y: 40, z: 50 };
 
-  // Professional lighting setup
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
   state.scene.add(ambientLight);
 
   const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.1);
   state.scene.add(hemisphereLight);
 
-  // Shadow light - configuration will be updated dynamically
   state.shadowLight = new THREE.DirectionalLight(0xffffff, 0.1);
   state.shadowLight.castShadow = true;
   state.scene.add(state.shadowLight);
 
-  // Additional fill lights
   const fillLight1 = new THREE.PointLight(0x8899ff, 0.4, 1000);
   fillLight1.position.set(-80, 50, -80);
   state.scene.add(fillLight1);
@@ -51,7 +47,6 @@ export function init3D() {
   fillLight2.position.set(80, 30, -60);
   state.scene.add(fillLight2);
 
-  // Ground plane
   const groundGeometry = new THREE.PlaneGeometry(10000, 10000, 1, 1);
   const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.2 });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -60,12 +55,10 @@ export function init3D() {
   ground.rotation.x = -Math.PI / 2;
   state.scene.add(ground);
 
-  // Handle window resize
   window.addEventListener('resize', onWindowResize);
   onWindowResize();
   animate();
 
-  // Disable context menu
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   console.log('[3D] Perspective 3D viewer initialized successfully');
@@ -74,10 +67,8 @@ export function init3D() {
 function onWindowResize() {
   const canvas = document.getElementById('canvas3d');
   if (!canvas) return;
-
   const w = canvas.offsetWidth;
   const h = canvas.offsetHeight;
-
   if (w > 0 && h > 0) {
     state.camera.aspect = w / h;
     state.camera.updateProjectionMatrix();
@@ -87,26 +78,22 @@ function onWindowResize() {
 
 function animate() {
   requestAnimationFrame(animate);
-
   if (state.orbitControls.isAutoRotating && state.mesh) {
     state.orbitControls.yaw += 0.005; 
     updateOrbitCamera();
   }
-
   state.renderer.render(state.scene, state.camera);
 }
 
 function createFaceWireframeGeometry(faces, vertices) {
   const edgeSet = new Set();
   const edgePositions = [];
-
   for (let i = 0; i < faces.length; i++) {
     const face = faces[i];
     for (let j = 0; j < face.length; j++) {
       const v1 = face[j];
       const v2 = face[(j + 1) % face.length];
       const key = v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
-
       if (!edgeSet.has(key)) {
         edgeSet.add(key);
         const vertex1 = vertices[v1];
@@ -116,7 +103,6 @@ function createFaceWireframeGeometry(faces, vertices) {
       }
     }
   }
-
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(edgePositions), 3));
   return geometry;
@@ -132,11 +118,15 @@ export function buildModel3D(vertices, faces) {
       state.meshWireframe.geometry.dispose();
       state.meshWireframe.material.dispose();
     }
+    if (state.bbPoints) {
+      state.scene.remove(state.bbPoints);
+      state.bbPoints.geometry.dispose();
+      state.bbPoints.material.dispose();
+    }
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.flat()), 3));
-
   const indices = [];
   faces.forEach(face => {
     for (let i = 0; i < face.length - 2; i++) {
@@ -144,7 +134,6 @@ export function buildModel3D(vertices, faces) {
     }
   });
   geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
@@ -171,18 +160,30 @@ export function buildModel3D(vertices, faces) {
   });
 
   state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-  state.meshWireframe.visible = true; // Always on as requested
+  state.meshWireframe.visible = true; 
   state.scene.add(state.meshWireframe);
 
-  // Fit camera and update shadows
+  // Bounding Box Points Visualization
   const box = new THREE.Box3().setFromObject(state.mesh);
+  const bbGeometry = new THREE.BufferGeometry();
+  const bbPositions = [];
+  const min = box.min;
+  const max = box.max;
+  const corners = [
+    [min.x, min.y, min.z], [max.x, min.y, min.z], [max.x, max.y, min.z], [min.x, max.y, min.z],
+    [min.x, min.y, max.z], [max.x, min.y, max.z], [max.x, max.y, max.z], [min.x, max.y, max.z]
+  ];
+  corners.forEach(c => bbPositions.push(c[0], c[1], c[2]));
+  bbGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bbPositions), 3));
+  const bbMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
+  state.bbPoints = new THREE.Points(bbGeometry, bbMaterial);
+  state.scene.add(state.bbPoints);
+
+  // Center mesh around origin
   const center = box.getCenter(new THREE.Vector3());
-  
-  // Set mesh position to be centered around origin for easier rotation/orbiting
-  // but we keep the offset if needed. The user wants the camera to focus on the BB.
-  // Since we want to orbit around the center of the model:
-  state.mesh.position.set(-center.x, 8, -center.z);
-  state.meshWireframe.position.set(-center.x, 8, -center.z);
+  state.mesh.position.sub(center);
+  state.meshWireframe.position.sub(center);
+  state.bbPoints.position.sub(center);
 
   updateShadows(box);
   fitCameraToBox(box);
@@ -191,7 +192,6 @@ export function buildModel3D(vertices, faces) {
 
 function updateShadows(box) {
   if (!state.shadowLight) return;
-  
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   const pad = maxDim * 1.5;
@@ -209,12 +209,8 @@ function updateShadows(box) {
 export function fitCameraToBox(box) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
-  
   const fov = state.camera.fov * (Math.PI / 180);
-  // Calculate distance to contain the bounding box
   let cameraZ = Math.abs(maxDim / Math.tan(fov / 2));
-  
-  // Add padding
   cameraZ *= 1.8;
 
   state.orbitControls.distance = cameraZ;
@@ -238,32 +234,22 @@ export function setupOrbitControls() {
 
   canvas.addEventListener('mousemove', (e) => {
     if (!isDragging || !state.mesh) return;
-
     const deltaX = e.clientX - previousMousePosition.x;
     const deltaY = e.clientY - previousMousePosition.y;
 
-    // To prevent orbiting from becoming too fast when zoomed out,
-    // we scale the rotation speed by the inverse of the distance.
-    // This makes the rotation speed consistent relative to the model size.
     const scaleAdjustment = 300 / state.orbitControls.distance;
     const adjustedSpeed = rotationSpeed * scaleAdjustment;
 
     state.orbitControls.yaw += deltaX * adjustedSpeed;
     state.orbitControls.pitch += deltaY * adjustedSpeed;
-
     state.orbitControls.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
 
     updateOrbitCamera();
     previousMousePosition = { x: e.clientX, y: e.clientY };
   });
 
-  canvas.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-
-  canvas.addEventListener('mouseleave', () => {
-    isDragging = false;
-  });
+  canvas.addEventListener('mouseup', () => { isDragging = false; });
+  canvas.addEventListener('mouseleave', () => { isDragging = false; });
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -276,7 +262,7 @@ export function setupOrbitControls() {
     }
     state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance, 10000));
     updateOrbitCamera();
-  });
+  }, { passive: false });
 
   updateOrbitCamera();
 }
