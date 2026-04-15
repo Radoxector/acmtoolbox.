@@ -397,86 +397,18 @@
       return geometry;
     }
 
-     function buildModel3D(vertices, faces) {
-       // Remove old mesh
-       if (state.mesh) {
-         state.scene.remove(state.mesh);
-         state.mesh.geometry.dispose();
-         state.mesh.material.dispose();
-         if (state.meshWireframe) {
-           state.scene.remove(state.meshWireframe);
-           state.meshWireframe.geometry.dispose();
-           state.meshWireframe.material.dispose();
-         }
-       }
-
-       // Build geometry
-       const geometry = new THREE.BufferGeometry();
-       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.flat()), 3));
-
-       const indices = [];
-       faces.forEach(face => {
-         for (let i = 0; i < face.length - 2; i++) {
-           indices.push(face[0], face[i + 1], face[i + 2]);
-         }
-       });
-       geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-
-       // Compute vertex normals for smooth shading
-       geometry.computeVertexNormals();
-       geometry.computeBoundingBox();
-       geometry.computeBoundingSphere();
-
-       // Main material: solid color with metallic car matte finish
-       state.meshMaterial = new THREE.MeshStandardMaterial({
-         color: state.materialColor,
-         metalness: 0.3,
-         roughness: 0.6,
-         side: THREE.DoubleSide,
-       });
-
-       state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
-       state.mesh.castShadow = true;
-       state.mesh.receiveShadow = true;
-       state.scene.add(state.mesh);
-
-       // Wireframe overlay
-       const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
-       const wireframeMaterial = new THREE.LineBasicMaterial({
-         color: 0x000000,
-         transparent: true,
-         opacity: 0.4,
-         linewidth: 2,
-       });
-
-       state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-       state.meshWireframe.visible = true; // Always ON as requested
-       state.scene.add(state.meshWireframe);
-
-       // --- AUTO-FOCUS CAMERA ON BOUNDING BOX ---
-       const box = new THREE.Box3().setFromObject(state.mesh);
-       const center = box.getCenter(new THREE.Vector3());
-       const size = box.getSize(new THREE.Vector3());
-
-       // Center the mesh at (0,0,0) for easier interaction
-       state.mesh.position.sub(center);
-       state.meshWireframe.position.sub(center);
-
-       // Calculate required camera distance
-       const maxDim = Math.max(size.x, size.y, size.z);
-       const fov = state.camera.fov * (Math.PI / 180);
-       let cameraZ = Math.abs(1 / Math.tan(fov / 2)) * maxDim;
-       cameraZ *= 1.8; // Add safety margin
-
-       // Initialize orbit state with new model dimensions
-       state.orbitControls.distance = cameraZ;
-       state.orbitControls.yaw = 0;
-       state.orbitControls.pitch = 0.5;
-
-       updateOrbitCamera();
-     }
-
-      
+    function buildModel3D(vertices, faces) {
+      // Remove old mesh
+      if (state.mesh) {
+        state.scene.remove(state.mesh);
+        state.mesh.geometry.dispose();
+        state.mesh.material.dispose();
+        if (state.meshWireframe) {
+          state.scene.remove(state.meshWireframe);
+          state.meshWireframe.geometry.dispose();
+          state.meshWireframe.material.dispose();
+        }
+      }
 
       // Build geometry
       const geometry = new THREE.BufferGeometry();
@@ -506,107 +438,90 @@
         state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
         state.mesh.castShadow = true;
         state.mesh.receiveShadow = true;
-
-        // Position model at origin (centering is handled by camera focus)
-        state.mesh.position.set(0, 0, 0);
+        // Position model ABOVE the grid
+        state.mesh.position.y = 8;
         state.scene.add(state.mesh);
 
-        // Wireframe overlay
-        state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-        state.meshWireframe.visible = true; // Set wireframe ON by default
-        state.meshWireframe.position.set(0, 0, 0);
-        state.scene.add(state.meshWireframe);
 
-        // --- AUTO-FOCUS CAMERA ON BOUNDING BOX ---
-        const box = new THREE.Box3().setFromObject(state.mesh);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
+      // Wireframe overlay - only show edges of original faces (not triangulations)
+      const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
+      const wireframeMaterial = new THREE.LineBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.5,
+        linewidth: 2,
+        fog: false,
+      });
 
-        // Move mesh so its center is at (0,0,0) for easier rotation/viewing
-        state.mesh.position.sub(center);
-        state.meshWireframe.position.sub(center);
+      state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+      state.meshWireframe.visible = false;
+      state.meshWireframe.position.y = 8;
+      state.scene.add(state.meshWireframe);
 
-        // Calculate required camera distance to fit the box
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fov = state.camera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(1 / Math.tan(fov / 2)) * maxDim;
-        
-        // Add padding
-        cameraZ *= 1.5;
+      // Fit camera to model - center on X/Z, position above ground on Y
+      const box = new THREE.Box3().setFromObject(state.mesh);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      // Center horizontally (X, Z) and position above ground (Y = 8)
+      state.mesh.position.set(-center.x, 8, -center.z);
+      state.meshWireframe.position.set(-center.x, 8, -center.z);
 
-        state.camera.position.set(cameraZ, cameraZ, cameraZ);
-        state.camera.lookAt(0, 0, 0);
-        
-        // Setup orbit controls
-        setupOrbitControls();
-      
+      // Setup smooth orbit controls
+      setupOrbitControls();
+    }
 
+    function setupOrbitControls() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) return;
 
-     function setupOrbitControls() {
-       const canvas = document.getElementById('canvas3d');
-       if (!canvas) return;
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+      const rotationSpeed = 0.008; // Smooth rotation speed
 
-       let isDragging = false;
-       let previousMousePosition = { x: 0, y: 0 };
-       const rotationSpeed = 0.005;
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 2) return; // Ignore right-click
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
 
-       canvas.addEventListener('mousedown', (e) => {
-         if (e.button === 0) { // Left click
-           isDragging = true;
-           previousMousePosition = { x: e.clientX, y: e.clientY };
-         }
-       });
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging || !state.mesh) return;
 
-       window.addEventListener('mousemove', (e) => {
-         if (!isDragging || !state.mesh) return;
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
 
-         const deltaX = e.clientX - previousMousePosition.x;
-         const deltaY = e.clientY - previousMousePosition.y;
+        // Apply smooth rotation
+        state.orbitControls.yaw += deltaX * rotationSpeed;
+        state.orbitControls.pitch += deltaY * rotationSpeed;
 
-         state.orbitControls.yaw -= deltaX * rotationSpeed;
-         state.orbitControls.pitch -= deltaY * rotationSpeed;
+        // Clamp pitch to prevent flipping
+        state.orbitControls.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
 
-         // Clamp pitch to avoid flipping (approx +/- 85 degrees)
-         state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, state.orbitControls.pitch));
+        updateOrbitCamera();
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
 
-         updateOrbitCamera();
-         previousMousePosition = { x: e.clientX, y: e.clientY };
-       });
+      canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
 
-       window.addEventListener('mouseup', () => {
-         isDragging = false;
-       });
+      canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+      });
 
-       canvas.addEventListener('wheel', (e) => {
-         e.preventDefault();
-         const zoomSpeed = 1.1;
-         if (e.deltaY < 0) {
-           state.orbitControls.distance /= zoomSpeed;
-         } else {
-           state.orbitControls.distance *= zoomSpeed;
-         }
-         // Reasonable zoom bounds
-         state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance, 2000));
-         updateOrbitCamera();
-       }, { passive: false });
-
-       function updateOrbitCamera() {
-         const { yaw, pitch, distance } = state.orbitControls;
-         
-         // Standard spherical to cartesian conversion
-         const x = distance * Math.sin(yaw) * Math.cos(pitch);
-         const y = distance * Math.sin(pitch);
-         const z = distance * Math.cos(yaw) * Math.cos(pitch);
-
-         state.camera.position.set(x, y, z);
-         state.camera.lookAt(0, 0, 0);
-       }
-     }
-
+      // Zoom with mouse wheel (free orbit - distance changes)
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = 1.1;
+        if (e.deltaY < 0) {
+          state.orbitControls.distance /= zoomFactor;
+        } else {
+          state.orbitControls.distance *= zoomFactor;
+        }
         // Allow much greater zoom range for flexible model scaling
         state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance, 2000));
         updateOrbitCamera();
-      
+      });
 
       function updateOrbitCamera() {
         // Free orbit - distance varies, model stays centered
@@ -621,7 +536,7 @@
 
       // Initialize camera position
       updateOrbitCamera();
-    
+    }
 
     // ─────────────────────────────────────────────────────────────────────────────
     //  SVG 2D Renderer (Client-Side)
@@ -944,19 +859,18 @@
             const slotEl = document.createElement('div');
             slotEl.className = 'library-slot';
             
-             // Try to load thumbnail if available
-             const hasImage = !!modelInfo.thumbnail;
-             
-             slotEl.innerHTML = `
-               <div class="library-slot-thumbnail">
-                 ${hasImage ? `<img src="${modelInfo.thumbnail}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
-                 <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
-               </div>
-               <div class="library-slot-name">${modelInfo.name}</div>
-               <div class="library-slot-info">Ready</div>
-             `;
-
-
+            // Try to load thumbnail if available
+            const thumbnailPath = `${API_URL}/models/${modelInfo.id}.jpg`;
+            const hasImage = modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray'; // Check if custom
+            
+            slotEl.innerHTML = `
+              <div class="library-slot-thumbnail">
+                ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
+                <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
+              </div>
+              <div class="library-slot-name">${modelInfo.name}</div>
+              <div class="library-slot-info">Ready</div>
+            `;
             
             slotEl.addEventListener('click', async () => {
               console.log(`[UI] Loading from library: ${modelInfo.id}`);
@@ -1049,117 +963,123 @@
           }
         });
         
-         // Reset camera view
-         document.getElementById('resetCameraBtn').addEventListener('click', () => {
-           console.log('[UI] Reset camera view clicked');
-           state.orbitControls.yaw = 0;
-           state.orbitControls.pitch = 0.5;
-           state.orbitControls.distance = 300;
-           updateOrbitCamera();
-           showToast('Camera reset', 'info');
-         });
-         
-         // SVG zoom controls
-         document.getElementById('zoomIn').addEventListener('click', () => {
-           state.svgZoom *= 1.2;
-           updateSVGTransform();
-         });
-         
-         document.getElementById('zoomOut').addEventListener('click', () => {
-           state.svgZoom /= 1.2;
-           updateSVGTransform();
-         });
-         
-         document.getElementById('zoomFit').addEventListener('click', () => {
-           state.svgZoom = 1;
-           state.svgPan = { x: 0, y: 0 };
-           updateSVGTransform();
-         });
-         
-         // SVG pan
-         let isPanning = false;
-         document.getElementById('svgViewer').addEventListener('mousedown', () => {
-           isPanning = true;
-         });
-         
-         document.addEventListener('mousemove', (e) => {
-           if (!isPanning) return;
-           state.svgPan.x += e.movementX;
-           state.svgPan.y += e.movementY;
-           updateSVGTransform();
-         });
-         
-         document.addEventListener('mouseup', () => {
-           isPanning = false;
-         });
-         
-         // SVG scroll zoom
-         document.getElementById('svgViewer').addEventListener('wheel', (e) => {
-           e.preventDefault();
-           const factor = 1 + e.deltaY * -0.001;
-           state.svgZoom *= factor;
-           state.svgZoom = Math.max(0.1, Math.min(state.svgZoom, 10));
-           updateSVGTransform();
-         }, { passive: false });
-         
-         // Split pane dragging (multiple dividers)
-         let activeDivider = null;
-         let pane1, pane2;
-         const dividers = document.querySelectorAll('.divider');
-         
-         dividers.forEach((divider, index) => {
-           divider.addEventListener('mousedown', (e) => {
-             activeDivider = divider;
-             
-             if (index === 0) {
-               // First divider: between 3D and 2D
-               pane1 = document.getElementById('pane3d');
-               pane2 = document.getElementById('pane2d');
-             } else if (index === 1) {
-               // Second divider: between 2D and Library
-               pane1 = document.getElementById('pane2d');
-               pane2 = document.getElementById('paneLibrary');
-             }
-             
-             e.preventDefault();
-           });
-         });
-         
-         document.addEventListener('mousemove', (e) => {
-           if (!activeDivider || !pane1 || !pane2) return;
-           
-           const container = document.getElementById('mainArea');
-           const containerRect = container.getBoundingClientRect();
-           const newX = e.clientX - containerRect.left;
-           
-           const flex1 = parseFloat(window.getComputedStyle(pane1).flex) || 1;
-           const flex2 = parseFloat(window.getComputedStyle(pane2).flex) || 1;
-           
-           const width1 = pane1.offsetWidth;
-           const width2 = pane2.offsetWidth;
-           const totalWidth = width1 + width2;
-           
-           const ratio = newX / totalWidth;
-           const newFlex1 = ratio * (flex1 + flex2);
-           const newFlex2 = (flex1 + flex2) - newFlex1;
-           
-           pane1.style.flex = newFlex1;
-           pane2.style.flex = newFlex2;
-         });
-         
-         document.addEventListener('mouseup', () => {
-           activeDivider = null;
-           pane1 = null;
-           pane2 = null;
-         });
-         
-         showToast('Welcome! Load a model or try the demo.', 'info');
-         } catch (err) {
-           console.error('[APP] Initialization error:', err);
-           showToast(`Error initializing app: ${err.message}`, 'error');
-         }
-       });
-
+        // Reset camera view
+        document.getElementById('resetCameraBtn').addEventListener('click', () => {
+          console.log('[UI] Reset camera view clicked');
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = 0.5;
+          state.orbitControls.distance = 300;
+          
+          const radius = state.orbitControls.distance;
+          const x = radius * Math.sin(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+          const y = radius * Math.sin(state.orbitControls.pitch);
+          const z = radius * Math.cos(state.orbitControls.yaw) * Math.cos(state.orbitControls.pitch);
+          
+          state.camera.position.set(x, y, z);
+          state.camera.lookAt(0, 0, 0);
+          showToast('Camera reset', 'info');
+        });
+        
+        // SVG zoom controls
+        document.getElementById('zoomIn').addEventListener('click', () => {
+          state.svgZoom *= 1.2;
+          updateSVGTransform();
+        });
+        
+        document.getElementById('zoomOut').addEventListener('click', () => {
+          state.svgZoom /= 1.2;
+          updateSVGTransform();
+        });
+        
+        document.getElementById('zoomFit').addEventListener('click', () => {
+          state.svgZoom = 1;
+          state.svgPan = { x: 0, y: 0 };
+          updateSVGTransform();
+        });
+        
+        // SVG pan
+        let isPanning = false;
+        document.getElementById('svgViewer').addEventListener('mousedown', () => {
+          isPanning = true;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+          if (!isPanning) return;
+          state.svgPan.x += e.movementX;
+          state.svgPan.y += e.movementY;
+          updateSVGTransform();
+        });
+        
+        document.addEventListener('mouseup', () => {
+          isPanning = false;
+        });
+        
+        // SVG scroll zoom
+        document.getElementById('svgViewer').addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const factor = 1 + e.deltaY * -0.001;
+          state.svgZoom *= factor;
+          state.svgZoom = Math.max(0.1, Math.min(state.svgZoom, 10));
+          updateSVGTransform();
+        }, { passive: false });
+        
+        // Split pane dragging (multiple dividers)
+        let activeDivider = null;
+        let pane1, pane2;
+        const dividers = document.querySelectorAll('.divider');
+        
+        dividers.forEach((divider, index) => {
+          divider.addEventListener('mousedown', (e) => {
+            activeDivider = divider;
+            
+            if (index === 0) {
+              // First divider: between 3D and 2D
+              pane1 = document.getElementById('pane3d');
+              pane2 = document.getElementById('pane2d');
+            } else if (index === 1) {
+              // Second divider: between 2D and Library
+              pane1 = document.getElementById('pane2d');
+              pane2 = document.getElementById('paneLibrary');
+            }
+            
+            e.preventDefault();
+          });
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+          if (!activeDivider || !pane1 || !pane2) return;
+          
+          const container = document.getElementById('mainArea');
+          const containerRect = container.getBoundingClientRect();
+          const newX = e.clientX - containerRect.left;
+          
+          const flex1 = parseFloat(window.getComputedStyle(pane1).flex) || 1;
+          const flex2 = parseFloat(window.getComputedStyle(pane2).flex) || 1;
+          
+          const width1 = pane1.offsetWidth;
+          const width2 = pane2.offsetWidth;
+          const totalWidth = width1 + width2;
+          
+          const ratio = newX / totalWidth;
+          const newFlex1 = ratio * (flex1 + flex2);
+          const newFlex2 = (flex1 + flex2) - newFlex1;
+          
+          pane1.style.flex = newFlex1;
+          pane2.style.flex = newFlex2;
+        });
+        
+        document.addEventListener('mouseup', () => {
+          activeDivider = null;
+          pane1 = null;
+          pane2 = null;
+        });
+        
+        showToast('Welcome! Load a model or try the demo.', 'info');
+        } catch (err) {
+          console.error('[APP] Initialization error:', err);
+          showToast(`Error initializing app: ${err.message}`, 'error');
+        }
+      });
   </script>
 </body>
 </html>
