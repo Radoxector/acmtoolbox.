@@ -167,8 +167,8 @@ export function buildModel3D(vertices, faces) {
   const box = new THREE.Box3().setFromObject(state.mesh);
   const bbGeometry = new THREE.BufferGeometry();
   const bbPositions = [];
-  const min = box.min;
-  const max = box.max;
+  const min = box.min.clone();
+  const max = box.max.clone();
   const corners = [
     [min.x, min.y, min.z], [max.x, min.y, min.z], [max.x, max.y, min.z], [min.x, max.y, min.z],
     [min.x, min.y, max.z], [max.x, min.y, max.z], [max.x, max.y, max.z], [min.x, max.y, max.z]
@@ -179,7 +179,7 @@ export function buildModel3D(vertices, faces) {
   state.bbPoints = new THREE.Points(bbGeometry, bbMaterial);
   state.scene.add(state.bbPoints);
 
-  // Center mesh around origin
+  // IMPORTANT: Center mesh around origin
   const center = box.getCenter(new THREE.Vector3());
   state.mesh.position.sub(center);
   state.meshWireframe.position.sub(center);
@@ -237,11 +237,12 @@ export function setupOrbitControls() {
     const deltaX = e.clientX - previousMousePosition.x;
     const deltaY = e.clientY - previousMousePosition.y;
 
-    const scaleAdjustment = 300 / state.orbitControls.distance;
-    const adjustedSpeed = rotationSpeed * scaleAdjustment;
-
-    state.orbitControls.yaw += deltaX * adjustedSpeed;
-    state.orbitControls.pitch += deltaY * adjustedSpeed;
+    // FIX: Removed the broken scaleAdjustment. 
+    // We want standard rotation speed. To make it scale-independent, 
+    // we use the yaw/pitch approach which is inherently distance-relative
+    // if we use the same rotationSpeed.
+    state.orbitControls.yaw += deltaX * rotationSpeed;
+    state.orbitControls.pitch += deltaY * rotationSpeed;
     state.orbitControls.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
 
     updateOrbitCamera();

@@ -41,8 +41,3 @@ export async function unfold(payload) {
   }
   return await response.json();
 }
-
-// Wrapper to maintain compatibility with the old apiCall pattern if needed
-export async function apiCall(method, endpoint, payload) {
-    return await unfold(payload); // This is a simplification for the current task
-}
