@@ -210,17 +210,26 @@ function _updateShadows(box) {
   const size = box.getSize(new THREE.Vector3());
   const pad  = Math.max(size.x, size.y, size.z) * 1.5;
   state.shadowLight.position.set(pad, pad * 1.2, pad * 0.8);
+  
   const sc = state.shadowLight.shadow.camera;
-  sc.left = -pad; sc.right = pad; sc.top = pad; sc.bottom = -pad;
-  sc.near = 1;    sc.far = pad * 5;
-  state.shadowLight.shadow.updateProjectionMatrix();
+  if (sc) {
+    sc.left = -pad; sc.right = pad; sc.top = pad; sc.bottom = -pad;
+    sc.near = 1;    sc.far = pad * 5;
+    state.shadowLight.shadow.updateProjectionMatrix();
+  }
 }
 
 export function fitCameraToBox(box) {
   const size   = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
-  const dist   = Math.abs(maxDim / Math.tan(state.camera.fov * Math.PI / 360)) * 1.8;
+  
+  // Calculate distance based on FOV and size
+  const fovRad = (state.camera.fov * Math.PI) / 180;
+  const dist = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
+  
   state.orbitControls.distance = dist;
+  state.orbitControls.panX = 0;
+  state.orbitControls.panY = 0;
   updateOrbitCamera();
 }
 

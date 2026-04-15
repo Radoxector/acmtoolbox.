@@ -20,6 +20,8 @@ export const state = {
     yaw: 0, 
     pitch: 0.5, 
     distance: 300,
+    panX: 0,
+    panY: 0,
     isAutoRotating: false
   },
   materialColor: 0x4a90e2,
