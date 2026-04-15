@@ -48,6 +48,7 @@ export function init3D() {
   );
   _ground.receiveShadow = true;
   _ground.rotation.x = -Math.PI / 2;
+  _ground.position.y = 0; 
   state.scene.add(_ground);
 
   // Grid
@@ -187,17 +188,30 @@ export function buildModel3D(vertices, faces) {
   const box = new THREE.Box3().setFromObject(state.mesh);
   const center = box.getCenter(new THREE.Vector3());
   
-  state.mesh.position.sub(center);
-  state.meshWireframe.position.sub(center);
+  // Offset mesh so the BOTTOM is at Y=0
+  const bottomY = box.min.y;
+  state.mesh.position.y -= bottomY;
+  state.meshWireframe.position.y -= bottomY;
 
-  // Bounding Box Points
+  // Re-calculate center for camera/orbit centering logic based on the new position
+  const newCenter = new THREE.Vector3(0, box.size.y / 2, 0);
+  state.mesh.position.x -= center.x;
+  state.mesh.position.z -= center.z;
+  state.meshWireframe.position.x -= center.x;
+  state.meshWireframe.position.z -= center.z;
+
+  // Bounding Box Points (local to the new position)
   const bbGeo = new THREE.BufferGeometry();
   const bbPos = [];
   const min = box.min.clone().sub(center);
   const max = box.max.clone().sub(center);
+  // Adjust min/max for the new translation (bottom at 0)
+  const adjustedMin = new THREE.Vector3(min.x, -bottomY, min.z);
+  const adjustedMax = new THREE.Vector3(max.x, max.y - bottomY, max.z);
+  
   const corners = [
-    [min.x, min.y, min.z], [max.x, min.y, min.z], [max.x, max.y, min.z], [min.x, max.y, min.z],
-    [min.x, min.y, max.z], [max.x, min.y, max.z], [max.x, max.y, max.z], [min.x, max.y, max.z]
+    [adjustedMin.x, adjustedMin.y, adjustedMin.z], [adjustedMax.x, adjustedMin.y, adjustedMin.z], [adjustedMax.x, adjustedMax.y, adjustedMin.z], [adjustedMin.x, adjustedMax.y, adjustedMin.z],
+    [adjustedMin.x, adjustedMin.y, adjustedMax.z], [adjustedMax.x, adjustedMin.y, adjustedMax.z], [adjustedMax.x, adjustedMax.y, adjustedMax.z], [adjustedMin.x, adjustedMax.y, adjustedMax.z]
   ];
   corners.forEach(c => bbPos.push(c[0], c[1], c[2]));
   bbGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bbPos), 3));
@@ -332,7 +346,7 @@ function _setupOrbitControls() {
       state.orbitControls.pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
     } else if (t.length === 2 && lastT.length >= 2) {
       const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[0].clientX)) / 2;
-      const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[0].clientY)) / 2;
+      const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[1].clientY)) / 2;
       const ps = (state.orbitControls.distance / 500) * PAN_SPD;
       state.orbitControls.panX += -avgDx * ps;
       state.orbitControls.panY += avgDy * ps;
