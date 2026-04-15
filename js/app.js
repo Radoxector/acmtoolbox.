@@ -171,14 +171,15 @@ async function initApp() {
         const thumbnailPath = `${window.API_URL}/models/${modelInfo.id}.jpg`;
         const hasImage = modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray';
         
-        slotEl.innerHTML = `
-          <div class="library-slot-thumbnail">
-            ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
-            <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
-          </div>
-          <div class="library-slot-name">${modelInfo.name}</div>
-          <div class="library-slot-info">Ready</div>
-        `;
+         slotEl.innerHTML = `
+           <div class="library-slot-thumbnail">
+             ${hasImage ? `<img src="${thumbnailPath}" alt="${modelInfo.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.library-slot-icon').style.display='block'">` : ''}
+             <div class="library-slot-icon" ${hasImage ? 'style="display:none"' : ''}>📦</div>
+           </div>
+           <div class="library-slot-name">${modelInfo.name}</div>
+           <div class="library-slot-info">Ready</div>
+         `;
+
         
         slotEl.addEventListener('click', async () => {
           ui.showToast('Loading model...', 'info');
