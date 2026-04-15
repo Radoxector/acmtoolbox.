@@ -395,14 +395,11 @@ body {
 
 .library-slot-icon {
   position: absolute;
-  font-size: 32px;
+  font-size: 24px;
   color: var(--muted);
-}
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
-  font-size: 32px;
   overflow: hidden;
 }
 
