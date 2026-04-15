@@ -265,11 +265,14 @@ function _setupOrbitControls() {
     prev = { x: e.clientX, y: e.clientY };
   });
 
-  canvas.addEventListener('mouseup', () => {
-    if (dragging || panning) _iner.active = true;
-    dragging = panning = false;
-  });
-  canvas.addEventListener('mouseleave', () => { dragging = panning = false; });
+   canvas.addEventListener('mouseup', (e) => {
+     if (dragging || panning) _iner.active = true;
+     dragging = panning = false;
+   });
+   canvas.addEventListener('mouseleave', (e) => { 
+     if (dragging || panning) _iner.active = true;
+     dragging = panning = false; 
+   });
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
