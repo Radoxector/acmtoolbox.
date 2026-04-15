@@ -168,20 +168,23 @@ async function initApp() {
       models.forEach(modelInfo => {
         const slotEl = document.createElement('div');
         slotEl.className = 'library-slot';
-         const hasImage = modelInfo.thumbnail && modelInfo.thumbnail.startsWith('data:');
-         const imgPath = hasImage ? modelInfo.thumbnail : (modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray' ? `${window.API_URL}/models/${modelInfo.id}.jpg` : null);
-         
-         slotEl.innerHTML = `
-           <div class="library-slot-thumbnail">
-             ${imgPath ? `<img src="${imgPath}" alt="${modelInfo.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.library-slot-icon').style.display='block'">` : ''}
-             <div class="library-slot-icon" style="display: ${imgPath ? 'none' : 'block'}">📦</div>
-           </div>
-           <div class="library-slot-name">${modelInfo.name}</div>
-           <div class="library-slot-info">Ready</div>
-         `;
+        
+        // Determine the best image source
+        let imgUrl = null;
+        if (modelInfo.thumbnail && (modelInfo.thumbnail.startsWith('data:') || modelInfo.thumbnail.startsWith('http'))) {
+          imgUrl = modelInfo.thumbnail;
+        } else if (modelInfo.id !== 'u-channel' && modelInfo.id !== 'box-tray') {
+          imgUrl = `${window.API_URL}/models/${modelInfo.id}.jpg`;
+        }
 
-
-
+        slotEl.innerHTML = `
+          <div class="library-slot-thumbnail">
+            ${imgUrl ? `<img src="${imgUrl}" alt="${modelInfo.name}" onerror="this.style.display='none'; this.parentElement.querySelector('.library-slot-icon').style.display='block'">` : ''}
+            <div class="library-slot-icon" style="display: ${imgUrl ? 'none' : 'block'}">📦</div>
+          </div>
+          <div class="library-slot-name">${modelInfo.name}</div>
+          <div class="library-slot-info">Ready</div>
+        `;
         
         slotEl.addEventListener('click', async () => {
           ui.showToast('Loading model...', 'info');

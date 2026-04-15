@@ -215,9 +215,22 @@
 
   <main>
     <div class="admin-grid">
-      <!-- Section 1: User Management -->
-      <section class="card">
-        <h2>👤 Register User</h2>
+       <!-- Section 1.5: GitHub Configuration -->
+       <section class="card">
+         <h2>🔑 GitHub CDN Config</h2>
+         <div class="form-group">
+           <label>GitHub Personal Access Token</label>
+           <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+         </div>
+         <div class="form-group">
+           <label>GitHub Repository (owner/repo)</label>
+           <input type="text" id="ghRepo" placeholder="username/repository">
+         </div>
+         <p style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 10px;">
+           Tokens are NOT stored on the server. They are used only for the current upload session.
+         </p>
+       </section>
+
         <form id="registerForm">
           <div class="form-group">
             <label>Username</label>
@@ -240,6 +253,10 @@
       <section class="card">
         <h2>📦 Upload Model</h2>
         <form id="uploadForm">
+          <div class="form-group">
+            <label>Model ID (slug)</label>
+            <input type="text" id="upId" required placeholder="e.g. corner-bracket">
+          </div>
           <div class="form-group">
             <label>Model Name</label>
             <input type="text" id="upName" required placeholder="e.g. Corner Bracket">
@@ -302,8 +319,119 @@
       // User Registration
       document.getElementById('registerForm').addEventListener('submit', handleRegister);
 
-      // Model Upload
-      document.getElementById('uploadForm').addEventListener('submit', handleUpload);
+        // Model Upload
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const statusEl = document.getElementById('upStatus');
+          const loader = document.getElementById('upLoader');
+          const btn = document.getElementById('upBtn');
+
+          const id = document.getElementById('upId').value.trim();
+          const name = document.getElementById('upName').value.trim();
+          const unit = document.getElementById('upUnit').value.trim();
+          const file = document.getElementById('upFile').files[0];
+          const thumb = document.getElementById('upThumb').files[0];
+
+          const ghToken = document.getElementById('ghToken').value.trim();
+          const ghRepo = document.getElementById('ghRepo').value.trim();
+
+          if (!id || !name || !unit || !file) {
+            statusEl.textContent = '❌ Missing required fields';
+            statusEl.className = 'status-msg error';
+            return;
+          }
+
+          if (!ghToken || !ghRepo) {
+            statusEl.textContent = '❌ GitHub Token and Repo required for thumbnail upload';
+            statusEl.className = 'status-msg error';
+            return;
+          }
+
+          statusEl.className = 'status-msg';
+          statusEl.textContent = '';
+          loader.style.display = 'block';
+          btn.disabled = true;
+
+          try {
+            let thumbnailUrl = '';
+
+            // 1. Upload Thumbnail to GitHub if provided
+            if (thumb) {
+              statusEl.textContent = '⏳ Uploading thumbnail to GitHub...';
+              statusEl.className = 'status-msg';
+              
+              const fileName = `${id}_thumb.jpg`;
+              const url = `https://api.github.com/repos/${ghRepo}/contents/thumbnails/${fileName}`;
+              
+              // Convert file to Base64 for GitHub API
+              const base64Thumb = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(thumb);
+              });
+
+              const ghResponse = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `token ${ghToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  message: `Upload thumbnail for ${id}`,
+                  content: base64Thumb
+                })
+              });
+
+              if (!ghResponse.ok) {
+                const errData = await ghResponse.json();
+                throw new Error(`GitHub upload failed: ${errData.message || ghResponse.statusText}`);
+              }
+
+              // Construct the raw URL
+              // Format: https://raw.githubusercontent.com/{owner}/{repo}/main/thumbnails/{fileName}
+              // Note: This assumes 'main' branch. 
+              const [owner, repo] = ghRepo.split('/');
+              thumbnailUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/thumbnails/${fileName}`;
+            }
+
+            // 2. Upload Model to Backend
+            statusEl.textContent = '⏳ Uploading model metadata to server...';
+            statusEl.className = 'status-msg';
+
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('name', name);
+            formData.append('unit', unit);
+            formData.append('modelJson', file);
+            if (thumbnailUrl) formData.append('thumbnailUrl', thumbnailUrl);
+
+            const response = await fetch(`${window.API_URL}/api/admin/models/upload`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${getToken()}` },
+              body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+              statusEl.textContent = `✅ Model '${name}' uploaded!`;
+              statusEl.className = 'status-msg success';
+              document.getElementById('uploadForm').reset();
+              loadLibrary();
+            } else {
+              throw new Error(result.error || result.message || 'Upload failed');
+            }
+          } catch (err) {
+            statusEl.textContent = `❌ ${err.message}`;
+            statusEl.className = 'status-msg error';
+          } finally {
+            loader.style.display = 'none';
+            btn.disabled = false;
+          }
+        });
+
+
     }
 
     // --- User Management ---
@@ -421,7 +549,7 @@
 
     async function deleteModel(id) {
       if (!confirm(`Delete model '${id}'? This cannot be undone.`)) return;
-
+  
       try {
         const response = await apiCall('DELETE', `/api/admin/models/${id}`);
         if (response.success) {
@@ -436,3 +564,4 @@
   </script>
 </body>
 </html>
+
