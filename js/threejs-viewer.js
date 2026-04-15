@@ -208,18 +208,26 @@ export function buildModel3D(vertices, faces) {
 function _updateShadows(box) {
   if (!state.shadowLight) return;
   const size = box.getSize(new THREE.Vector3());
-  const pad  = Math.max(size.x, size.y, size.z) * 1.5;
-  state.shadowLight.position.set(pad, pad * 1.2, pad * 0.8);
   
+  // Position the light directly above the model's center to cast shadows down
+  const pad = Math.max(size.x, size.y, size.z) * 2;
+  state.shadowLight.position.set(0, pad, 0);
+
   const sc = state.shadowLight.shadow.camera;
   if (sc && typeof sc.updateProjectionMatrix === 'function') {
-    sc.left = -pad; sc.right = pad; sc.top = pad; sc.bottom = -pad;
-    sc.near = 1;    sc.far = pad * 5;
+    // Since the model is centered at (0,0,0), we use half-extents for the shadow camera frustum
+    sc.left = -size.x / 2;
+    sc.right = size.x / 2;
+    sc.top = size.z / 2;
+    sc.bottom = -size.z / 2;
+    sc.near = 0.1;
+    sc.far = pad * 10;
     sc.updateProjectionMatrix();
   }
 }
 
 export function fitCameraToBox(box) {
+
   const size   = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
