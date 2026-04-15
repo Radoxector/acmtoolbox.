@@ -24,7 +24,7 @@ export function init3D() {
     45,
     canvas_width / canvas_height,
     0.1,
-    10000
+    20000 // Increased far plane for large models
   );
   state.camera.position.set(50, 40, 50);
   state.camera.lookAt(0, 0, 0);
@@ -37,28 +37,22 @@ export function init3D() {
   const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.1);
   state.scene.add(hemisphereLight);
 
-  const shadowLight = new THREE.DirectionalLight(0xffffff, 0.1);
-  shadowLight.position.set(10, 100, 30);
-  shadowLight.castShadow = true;
-  shadowLight.shadow.camera.left = -100;
-  shadowLight.shadow.camera.right = 100;
-  shadowLight.shadow.camera.top = 100;
-  shadowLight.shadow.camera.bottom = -100;
-  shadowLight.shadow.mapSize.width = 2048;
-  shadowLight.shadow.mapSize.height = 2048;
-  state.scene.add(shadowLight);
+  // Shadow light - configuration will be updated dynamically
+  state.shadowLight = new THREE.DirectionalLight(0xffffff, 0.1);
+  state.shadowLight.castShadow = true;
+  state.scene.add(state.shadowLight);
 
   // Additional fill lights
-  const fillLight1 = new THREE.PointLight(0x8899ff, 0.4, 200);
+  const fillLight1 = new THREE.PointLight(0x8899ff, 0.4, 1000);
   fillLight1.position.set(-80, 50, -80);
   state.scene.add(fillLight1);
 
-  const fillLight2 = new THREE.PointLight(0xff9988, 0.3, 150);
+  const fillLight2 = new THREE.PointLight(0xff9988, 0.3, 1000);
   fillLight2.position.set(80, 30, -60);
   state.scene.add(fillLight2);
 
   // Ground plane
-  const groundGeometry = new THREE.PlaneGeometry(200, 200, 1, 1);
+  const groundGeometry = new THREE.PlaneGeometry(10000, 10000, 1, 1);
   const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.2 });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.receiveShadow = true;
@@ -94,9 +88,8 @@ function onWindowResize() {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Handle auto-rotation
   if (state.orbitControls.isAutoRotating && state.mesh) {
-    state.orbitControls.yaw += 0.005; // Constant slow rotation
+    state.orbitControls.yaw += 0.005; 
     updateOrbitCamera();
   }
 
@@ -166,7 +159,6 @@ export function buildModel3D(vertices, faces) {
   state.mesh = new THREE.Mesh(geometry, state.meshMaterial);
   state.mesh.castShadow = true;
   state.mesh.receiveShadow = true;
-  state.mesh.position.y = 8;
   state.scene.add(state.mesh);
 
   const wireframeGeometry = createFaceWireframeGeometry(faces, vertices);
@@ -179,21 +171,39 @@ export function buildModel3D(vertices, faces) {
   });
 
   state.meshWireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-  state.meshWireframe.visible = false;
-  state.meshWireframe.position.y = 8;
+  state.meshWireframe.visible = true; // Always on as requested
   state.scene.add(state.meshWireframe);
 
-  // Fit camera to model
+  // Fit camera and update shadows
   const box = new THREE.Box3().setFromObject(state.mesh);
   const center = box.getCenter(new THREE.Vector3());
-
-  // Center horizontally (X, Z) and position above ground (Y = 8)
+  
+  // Set mesh position to be centered around origin for easier rotation/orbiting
+  // but we keep the offset if needed. The user wants the camera to focus on the BB.
+  // Since we want to orbit around the center of the model:
   state.mesh.position.set(-center.x, 8, -center.z);
   state.meshWireframe.position.set(-center.x, 8, -center.z);
 
-  // Update orbit controls with new scale-independent distance
+  updateShadows(box);
   fitCameraToBox(box);
   setupOrbitControls();
+}
+
+function updateShadows(box) {
+  if (!state.shadowLight) return;
+  
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const pad = maxDim * 1.5;
+
+  state.shadowLight.position.set(pad, pad, pad);
+  state.shadowLight.shadow.camera.left = -pad;
+  state.shadowLight.shadow.camera.right = pad;
+  state.shadowLight.shadow.camera.top = pad;
+  state.shadowLight.shadow.camera.bottom = -pad;
+  state.shadowLight.shadow.mapSize.width = 2048;
+  state.shadowLight.shadow.mapSize.height = 2048;
+  state.shadowLight.shadow.updateProjectionMatrix();
 }
 
 export function fitCameraToBox(box) {
@@ -201,9 +211,11 @@ export function fitCameraToBox(box) {
   const maxDim = Math.max(size.x, size.y, size.z);
   
   const fov = state.camera.fov * (Math.PI / 180);
+  // Calculate distance to contain the bounding box
   let cameraZ = Math.abs(maxDim / Math.tan(fov / 2));
   
-  cameraZ *= 1.5;
+  // Add padding
+  cameraZ *= 1.8;
 
   state.orbitControls.distance = cameraZ;
   updateOrbitCamera();
@@ -220,7 +232,7 @@ export function setupOrbitControls() {
   canvas.addEventListener('mousedown', (e) => {
     if (e.button === 2) return; 
     isDragging = true;
-    state.orbitControls.isAutoRotating = false; // Stop auto-rotation on interaction
+    state.orbitControls.isAutoRotating = false; 
     previousMousePosition = { x: e.clientX, y: e.clientY };
   });
 
@@ -230,8 +242,14 @@ export function setupOrbitControls() {
     const deltaX = e.clientX - previousMousePosition.x;
     const deltaY = e.clientY - previousMousePosition.y;
 
-    state.orbitControls.yaw += deltaX * rotationSpeed;
-    state.orbitControls.pitch += deltaY * rotationSpeed;
+    // To prevent orbiting from becoming too fast when zoomed out,
+    // we scale the rotation speed by the inverse of the distance.
+    // This makes the rotation speed consistent relative to the model size.
+    const scaleAdjustment = 300 / state.orbitControls.distance;
+    const adjustedSpeed = rotationSpeed * scaleAdjustment;
+
+    state.orbitControls.yaw += deltaX * adjustedSpeed;
+    state.orbitControls.pitch += deltaY * adjustedSpeed;
 
     state.orbitControls.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
 
@@ -249,7 +267,7 @@ export function setupOrbitControls() {
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    state.orbitControls.isAutoRotating = false; // Stop auto-rotation on interaction
+    state.orbitControls.isAutoRotating = false; 
     const zoomFactor = 1.1;
     if (e.deltaY < 0) {
       state.orbitControls.distance /= zoomFactor;
