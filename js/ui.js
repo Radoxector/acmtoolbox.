@@ -64,6 +64,13 @@ function renderSVG(result) {
   const h = maxY - minY + 40;
   const unit = state.modelData?.unit || 'mm';
 
+  // Calculate line thickness factor based on the size of the model
+  // A 100-unit dimension will have a baseline thickness of 1.0
+  const scaleFactor = Math.max(w, h) / 100;
+  const seamWidth = 0.5 * scaleFactor;
+  const foldWidth = 1.0 * scaleFactor;
+  const cutWidth = 1.0 * scaleFactor;
+
   let svg = `<svg width="${w}${unit}" height="${h}${unit}" viewBox="${minX - 20} ${minY - 20} ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
   svg += `<!-- Scale: 1 unit = 1${unit} -->\n`;
   svg += `<defs><style>svg { display: flex; align-items: center; justify-content: center; }</style></defs>\n`;
@@ -75,7 +82,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.SEAM_CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="1.5,1.5"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="${seamWidth}" stroke-dasharray="1.5,1.5"/>`;
   });
   svg += `</g>`;
 
@@ -85,7 +92,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.FOLD) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="1"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="${foldWidth}"/>`;
   });
   svg += `</g>`;
 
@@ -95,7 +102,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="1"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="${cutWidth}"/>`;
   });
   svg += `</g>`;
 

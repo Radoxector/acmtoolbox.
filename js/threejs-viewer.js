@@ -8,6 +8,7 @@ const _iner = { yawV: 0, pitchV: 0, panXV: 0, panYV: 0, damping: 0.87, active: f
 // ── Scene helpers ─────────────────────────────────────────────────────────────
 let _grid = null;
 let _axes = null;
+let _ground = null;
 let _controlsReady = false; 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,19 +41,21 @@ export function init3D() {
 
   _setupLighting();
 
-  const ground = new THREE.Mesh(
+  // Ground Plane (for shadows)
+  _ground = new THREE.Mesh(
     new THREE.PlaneGeometry(10000, 10000),
-    new THREE.ShadowMaterial({ opacity: 0.25 })
+    new THREE.ShadowMaterial({ opacity: 0.3 })
   );
-  ground.receiveShadow = true;
-  ground.rotation.x = -Math.PI / 2;
-  state.scene.add(ground);
+  _ground.receiveShadow = true;
+  _ground.rotation.x = -Math.PI / 2;
+  state.scene.add(_ground);
 
-  // _grid = new THREE.GridHelper(400, 60, 0x444444, 0x333333);
-  // _grid.material.transparent = true;
-  // _grid.material.opacity = 0.4;
-  // _grid.visible = state.showGrid ?? true;
-  // state.scene.add(_grid);
+  // Grid
+  _grid = new THREE.GridHelper(1000, 100, 0x444444, 0x333333);
+  _grid.material.transparent = true;
+  _grid.material.opacity = 0.3;
+  _grid.visible = state.showGrid ?? true;
+  state.scene.add(_grid);
 
   _axes = new THREE.AxesHelper(20);
   _axes.visible = state.showAxes ?? true;
@@ -201,21 +204,31 @@ export function buildModel3D(vertices, faces) {
   state.bbPoints = new THREE.Points(bbGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 2 }));
   state.scene.add(state.bbPoints);
 
-  _updateShadows(box);
+  _alignEnvironment(box);
   fitCameraToBox(box);
+}
+
+function _alignEnvironment(box) {
+  const bottomY = box.min.y;
+
+  if (_grid) {
+    _grid.position.y = bottomY;
+  }
+  if (_ground) {
+    _ground.position.y = bottomY;
+  }
+  _updateShadows(box);
 }
 
 function _updateShadows(box) {
   if (!state.shadowLight) return;
   const size = box.getSize(new THREE.Vector3());
   
-  // Position the light directly above the model's center to cast shadows down
   const pad = Math.max(size.x, size.y, size.z) * 2;
   state.shadowLight.position.set(0, pad, 0);
 
   const sc = state.shadowLight.shadow.camera;
   if (sc && typeof sc.updateProjectionMatrix === 'function') {
-    // Since the model is centered at (0,0,0), we use half-extents for the shadow camera frustum
     sc.left = -size.x / 2;
     sc.right = size.x / 2;
     sc.top = size.z / 2;
@@ -227,7 +240,6 @@ function _updateShadows(box) {
 }
 
 export function fitCameraToBox(box) {
-
   const size   = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
