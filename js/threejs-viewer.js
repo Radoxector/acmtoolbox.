@@ -188,39 +188,47 @@ export function buildModel3D(vertices, faces) {
   const box = new THREE.Box3().setFromObject(state.mesh);
   const center = box.getCenter(new THREE.Vector3());
   
-  // Offset mesh so the BOTTOM is at Y=0
+  // 1. Move the mesh so that its bottom is exactly at Y = 0
   const bottomY = box.min.y;
   state.mesh.position.y -= bottomY;
-  state.meshWireframe.position.y -= bottomY;
 
-  // Re-calculate center for camera/orbit centering logic based on the new position
-  const newCenter = new THREE.Vector3(0, box.size.y / 2, 0);
+  // 2. We also want to center the model on X and Z to keep it in the middle of the view
+  // The current mesh position is (original_center + translation_to_bottom_y)
+  // We want the final position to be (0, center_of_height_from_bottom, 0)
+  // Wait, if we want the bottom at 0, the new center.y will be (max.y - min.y) / 2
+  const height = box.max.y - box.min.y;
+  const newCenterY = height / 2;
+
+  // The current mesh position is (original_center.x, original_center.y - bottomY, original_center.z)
+  // We want it to be (0, newCenterY, 0)
   state.mesh.position.x -= center.x;
   state.mesh.position.z -= center.z;
-  state.meshWireframe.position.x -= center.x;
-  state.meshWireframe.position.z -= center.z;
+  state.mesh.position.y = newCenterY;
 
+  // 3. Update the wireframe to match the new mesh position
+  state.meshWireframe.position.copy(state.mesh.position);
+
+  // 4. Re-calculate the bounding box based on the new position for BB points and Camera
+  const newBox = new THREE.Box3().setFromObject(state.mesh);
+  
   // Bounding Box Points (local to the new position)
   const bbGeo = new THREE.BufferGeometry();
   const bbPos = [];
-  const min = box.min.clone().sub(center);
-  const max = box.max.clone().sub(center);
-  // Adjust min/max for the new translation (bottom at 0)
-  const adjustedMin = new THREE.Vector3(min.x, -bottomY, min.z);
-  const adjustedMax = new THREE.Vector3(max.x, max.y - bottomY, max.z);
-  
+  const min = newBox.min;
+  const max = newBox.max;
   const corners = [
-    [adjustedMin.x, adjustedMin.y, adjustedMin.z], [adjustedMax.x, adjustedMin.y, adjustedMin.z], [adjustedMax.x, adjustedMax.y, adjustedMin.z], [adjustedMin.x, adjustedMax.y, adjustedMin.z],
-    [adjustedMin.x, adjustedMin.y, adjustedMax.z], [adjustedMax.x, adjustedMin.y, adjustedMax.z], [adjustedMax.x, adjustedMax.y, adjustedMax.z], [adjustedMin.x, adjustedMax.y, adjustedMax.z]
+    [min.x, min.y, min.z], [max.x, min.y, min.z], [max.x, max.y, min.z], [min.x, max.y, min.z],
+    [min.x, min.y, max.z], [max.x, min.y, max.z], [max.x, max.y, max.z], [min.x, max.y, max.z]
   ];
   corners.forEach(c => bbPos.push(c[0], c[1], c[2]));
   bbGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bbPos), 3));
   state.bbPoints = new THREE.Points(bbGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 2 }));
   state.scene.add(state.bbPoints);
 
-  _alignEnvironment(box);
-  fitCameraToBox(box);
+  _alignEnvironment(newBox);
+  fitCameraToBox(newBox);
 }
+
 
 function _alignEnvironment(box) {
   const bottomY = box.min.y;

@@ -5,55 +5,77 @@ import * as api from './api.js';
 import * as viewer from './threejs-viewer.js';
 import * as ui from './ui.js';
 
-async function handleUnfold() {
-  if (!state.modelData) {
-    ui.showToast('No model loaded', 'error');
-    return;
-  }
+ async function handleUnfold() {
+   if (!state.modelData) {
+     ui.showToast('No model loaded', 'error');
+     return;
+   }
 
-  const payload = {
-    model: {
-      name: state.modelData.name,
-      unit: state.modelData.unit,
-      vertices: state.currentVerts,
-      faces: state.currentFaces,
-      seam_edges: Array.from(state.seamEdgeSet),
-    },
-  };
+   const x = parseFloat(document.getElementById('dimX').value) || 1;
+   const y = parseFloat(document.getElementById('dimY').value) || 1;
+   const z = parseFloat(document.getElementById('dimZ').value) || 1;
 
-  try {
-    const response = await api.unfold(payload);
-    if (response.error) {
-      ui.showToast(response.message || response.error, 'error');
-      return;
-    }
+   const origBB = {
+     minX: Math.min(...state.originalVerts.map(v => v[0])),
+     maxX: Math.max(...state.originalVerts.map(v => v[0])),
+     minY: Math.min(...state.originalVerts.map(v => v[1])),
+     maxY: Math.max(...state.originalVerts.map(v => v[1])),
+     minZ: Math.min(...state.originalVerts.map(v => v[2])),
+     maxZ: Math.max(...state.originalVerts.map(v => v[2])),
+   };
 
-    state.unfoldResult = response;
-    ui.displaySVG(response);
-    document.getElementById('downloadBtn').disabled = false;
+   const sx = x / (origBB.maxX - origBB.minX || 1);
+   const sy = y / (origBB.maxY - origBB.minY || 1);
+   const sz = z / (origBB.maxZ - origBB.minZ || 1);
 
-    ui.updateStatus(response);
+   const payload = {
+     model: {
+       name: state.modelData.name,
+       unit: state.modelData.unit,
+       vertices: state.originalVerts.map(v => [
+         origBB.minX + (v[0] - origBB.minX) * sx,
+         origBB.minY + (v[1] - origBB.minY) * sy,
+         origBB.minZ + (v[2] - origBB.minZ) * sz,
+       ]),
+       faces: state.currentFaces,
+       seam_edges: Array.from(state.seamEdgeSet),
+     },
+   };
 
-    if (response.remaining_unfolds !== undefined) {
-      const remaining = response.remaining_unfolds;
-      if (typeof storeRemainingUnfolds === 'function') {
-        storeRemainingUnfolds(remaining);
-      }
-      ui.updateRemainingUnfolds(remaining);
-      
-      if (remaining === 0) {
-        ui.showToast(`Unfolded successfully! Limit reached - ${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}`, 'warning');
-      } else {
-        const countText = remaining > 999 ? 'unlimited' : `${remaining} remaining`;
-        ui.showToast(`Unfolded successfully! (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}, ${countText})`, 'success');
-      }
-    } else {
-      ui.showToast(`Unfolded successfully (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''})`, 'success');
-    }
-  } catch (err) {
-    ui.showToast(`Unfold failed: ${err.message}`, 'error');
-  }
+   try {
+     const response = await api.unfold(payload);
+     if (response.error) {
+       ui.showToast(response.message || response.error, 'error');
+       return;
+     }
+
+     state.unfoldResult = response;
+     ui.displaySVG(response);
+     document.getElementById('downloadBtn').disabled = false;
+
+     ui.updateStatus(response);
+
+     if (response.remaining_unfolds !== undefined) {
+       const remaining = response.remaining_unfolds;
+       if (typeof storeRemainingUnfolds === 'function') {
+         storeRemainingUnfolds(remaining);
+       }
+       ui.updateRemainingUnfolds(remaining);
+       
+       if (remaining === 0) {
+         ui.showToast(`Unfolded successfully! Limit reached - ${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}`, 'warning');
+       } else {
+         const countText = remaining > 999 ? 'unlimited' : `${remaining} remaining`;
+         ui.showToast(`Unfolded successfully! (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''}, ${countText})`, 'success');
+       }
+     } else {
+       ui.showToast(`Unfolded successfully (${response.n_islands} island${response.n_islands !== 1 ? 's' : ''})`, 'success');
+     }
+   } catch (err) {
+     ui.showToast(`Unfold failed: ${err.message}`, 'error');
+   }
 }
+
 
 function loadModel(modelData) {
   if (!modelData) {
