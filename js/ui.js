@@ -24,7 +24,6 @@ export function updateStatus(data) {
 // ─── Remaining unfolds ────────────────────────────────────────────────────
 export function updateRemainingUnfolds(remaining) {
   const displayText = remaining > 999 ? '∞' : String(remaining);
-
   const badge = document.getElementById('unfoldCounter');
   if (badge) {
     badge.textContent = displayText;
@@ -32,7 +31,6 @@ export function updateRemainingUnfolds(remaining) {
     if (remaining === 0)      badge.classList.add('danger');
     else if (remaining <= 2)  badge.classList.add('warn');
   }
-
   const pip = document.getElementById('counterPip');
   if (pip) {
     pip.textContent = displayText;
@@ -40,7 +38,6 @@ export function updateRemainingUnfolds(remaining) {
     if (remaining === 0)      pip.classList.add('danger');
     else if (remaining <= 2)  pip.classList.add('warn');
   }
-
   const unfoldBtn = document.getElementById('unfoldBtn');
   if (unfoldBtn) unfoldBtn.disabled = remaining === 0;
 }
@@ -52,6 +49,7 @@ export function displaySVG(result) {
 
   const svgLayer = document.getElementById('svgLayer');
   svgLayer.innerHTML = svg;
+  svgLayer.style.display = 'block';
 
   const svgElem = svgLayer.querySelector('svg');
   if (svgElem) {
@@ -67,7 +65,7 @@ export function displaySVG(result) {
       }
     }
     svgElem.style.display = 'block';
-    // Ensure strokes are always readable (backup: CSS already handles this)
+    // Ensure strokes are always readable (backup for older browsers)
     svgElem.style.vectorEffect = 'non-scaling-stroke';
   }
 
