@@ -191,7 +191,7 @@ export function renderDownloadSVG(result) {
     });
   };
 
-  addLines('#94a3b8', 0.5, EdgeType.SEAM_CUT);
+  addLines('#ff0000', 0.5, EdgeType.SEAM_CUT);
   addLines('#2563eb', 1, EdgeType.FOLD);
   addLines('#dc2626', 1, EdgeType.CUT);
 
