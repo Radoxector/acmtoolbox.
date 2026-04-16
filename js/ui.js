@@ -177,8 +177,3 @@ export function renderSVG(result, isDownload = false) {
 export function renderSVGForDownload(result) {
   return renderSVG(result, true);
 }
-
-// ─── Helper for download ──────────────────────────────────────────────────
-export function renderSVGForDownload(result) {
-  return renderSVG(result, true);
-}
