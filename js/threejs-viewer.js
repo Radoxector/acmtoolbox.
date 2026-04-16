@@ -21,8 +21,7 @@ export function init3D() {
   state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   state.renderer.setClearColor(0x808080, 1);
-  state.renderer.shadowMap.enabled = true;
-  state.renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+  state.renderer.shadowMap.enabled = false;
   state.renderer.toneMapping        = THREE.ACESFilmicToneMapping;
   state.renderer.toneMappingExposure = 1.1;
   if (THREE.SRGBColorSpace !== undefined) {
@@ -41,23 +40,7 @@ export function init3D() {
 
   _setupLighting();
 
-  // Ground Plane (for shadows)
-  _ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(10000, 10000),
-    new THREE.ShadowMaterial({ opacity: 0.3 })
-  );
-  _ground.receiveShadow = true;
-  _ground.rotation.x = -Math.PI / 2;
-  _ground.position.y = 0; 
-  state.scene.add(_ground);
-
   // Grid
-  _grid = new THREE.GridHelper(1000, 100, 0x444444, 0x333333);
-  _grid.material.transparent = true;
-  _grid.material.opacity = 0.3;
-  _grid.visible = state.showGrid ?? true;
-  state.scene.add(_grid);
-
   _axes = new THREE.AxesHelper(20);
   _axes.visible = state.showAxes ?? true;
   state.scene.add(_axes);
@@ -175,12 +158,12 @@ export function buildModel3D(vertices, faces) {
   });
 
   state.mesh = new THREE.Mesh(geo, state.meshMaterial);
-  state.mesh.castShadow = state.mesh.receiveShadow = true;
+  state.mesh.castShadow = state.mesh.receiveShadow = false;
   state.scene.add(state.mesh);
 
   state.meshWireframe = new THREE.LineSegments(
     _buildWireframeGeo(faces, vertices),
-    new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, fog: false })
+    new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, fog: false })
   );
   state.meshWireframe.visible = true;
   state.scene.add(state.meshWireframe);
@@ -188,24 +171,12 @@ export function buildModel3D(vertices, faces) {
   const box = new THREE.Box3().setFromObject(state.mesh);
   const center = box.getCenter(new THREE.Vector3());
   
-  // 1. Move the mesh so that its bottom is exactly at Y = 0
-  const bottomY = box.min.y;
-  state.mesh.position.y -= bottomY;
+  // Center the model at (0,0,0)
+  state.mesh.position.x = -center.x;
+  state.mesh.position.y = -center.y;
+  state.mesh.position.z = -center.z;
 
-  // 2. We also want to center the model on X and Z to keep it in the middle of the view
-  // The current mesh position is (original_center + translation_to_bottom_y)
-  // We want the final position to be (0, center_of_height_from_bottom, 0)
-  // Wait, if we want the bottom at 0, the new center.y will be (max.y - min.y) / 2
-  const height = box.max.y - box.min.y;
-  const newCenterY = height / 2;
-
-  // The current mesh position is (original_center.x, original_center.y - bottomY, original_center.z)
-  // We want it to be (0, newCenterY, 0)
-  state.mesh.position.x -= center.x;
-  state.mesh.position.z -= center.z;
-  state.mesh.position.y = newCenterY;
-
-  // 3. Update the wireframe to match the new mesh position
+  // Update the wireframe to match the new mesh position
   state.meshWireframe.position.copy(state.mesh.position);
 
   // 4. Re-calculate the bounding box based on the new position for BB points and Camera
