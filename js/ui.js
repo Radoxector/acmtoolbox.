@@ -171,15 +171,22 @@ export function renderDownloadSVG(result) {
   const padding = 2;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
-  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
+  // The scale factor to convert internal mm to the "user cm" (1 unit = 10mm)
+  const scale = 10;
+
+  // We create the SVG with dimensions ALREADY multiplied by 10.
+  // This handles the "cm lie": 10mm (internal) -> 100mm (file)
+  let svg = `<svg width="${(w + padding * 2) * scale}mm" height="${(h + padding * 2) * scale}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
   const addLines = (stroke, strokeWidth, type) => {
     edges.forEach((edge, i) => {
       if (edge_types[i] !== type) return;
       const [x1, y1] = verts2d[edge[0]];
       const [x2, y2] = verts2d[edge[1]];
-      // Scale stroke width by 10 because the file will be scaled up by 10 in app.js
-      const finalStrokeWidth = strokeWidth * 10;
+      
+      // We multiply the stroke-width by the scale so it remains visually 
+      // consistent in the 10x larger coordinate system.
+      const finalStrokeWidth = strokeWidth * scale;
       svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
     });
   };
