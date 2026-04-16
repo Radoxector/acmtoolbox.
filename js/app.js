@@ -167,17 +167,60 @@ function applyScale() {
   document.getElementById('downloadBtn').disabled = true;
 }
 
-// ─── Download SVG ─────────────────────────────────────────────────────────
+// ─── Download SVG with "cm lie" correction ───────────────────────────────
 function downloadSVG() {
-  if (!state.svgString) return;
-  const blob = new Blob([state.svgString], { type: 'image/svg+xml' });
+  if (!state.unfoldResult) {
+    ui.showToast('No unfolded template to download', 'warning');
+    return;
+  }
+
+  // Generate the correct download SVG using the result and isDownload=true
+  // This uses mm units and scales dimensions by 10 to correct the "cm lie"
+  const svgString = ui.renderDownloadSVG(state.unfoldResult);
+
+  // Correcting the viewBox and dimensions by multiplying by 10 to convert mm to cm scale
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgString, 'image/svg+xml');
+  const svgElem = doc.querySelector('svg');
+  if (!svgElem) {
+    ui.showToast('Invalid SVG data', 'error');
+    return;
+  }
+
+  // 1. Scale width and height (multiply by 10 to convert mm to cm-scale mm)
+  const oldWidth = svgElem.getAttribute('width');
+  const oldHeight = svgElem.getAttribute('height');
+  if (oldWidth && oldHeight) {
+    const wNum = parseFloat(oldWidth) * 10;
+    const hNum = parseFloat(oldHeight) * 10;
+    svgElem.setAttribute('width', wNum + 'mm');
+    svgElem.setAttribute('height', hNum + 'mm');
+  }
+
+  // 2. Scale viewBox (multiply all 4 components by 10)
+  const oldViewBox = svgElem.getAttribute('viewBox');
+  if (oldViewBox) {
+    const parts = oldViewBox.trim().split(/\s+/).map(parseFloat);
+    if (parts.length === 4) {
+      const vb = parts.map(p => p * 10);
+      svgElem.setAttribute('viewBox', vb.join(' '));
+    }
+  }
+
+  // 3. Stroke widths are already multiplied by 10 in renderSVG (isDownload=true),
+  //    so we don't modify them further here.
+
+  const serialized = new XMLSerializer().serializeToString(doc);
+  const blob = new Blob([serialized], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `${state.modelData?.name || 'unfold'}.svg`;
   a.click();
   URL.revokeObjectURL(url);
+  ui.showToast('SVG downloaded', 'success');
 }
+
 
 // ─── Build library card ───────────────────────────────────────────────────
 function buildLibraryCard(modelInfo, container) {
