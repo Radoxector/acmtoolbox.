@@ -134,44 +134,48 @@ export function updateSVGTransform() {
 }
 
 // ─── Render SVG string ────────────────────────────────────────────────────
-function renderSVG(result) {
+function renderSVG(result, isDownload = false) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
   const w = maxX - minX;
   const h = maxY - minY;
-  const padding = 8; // extra padding for better visibility of edges
+  const unit = state.modelData?.unit || 'mm';
 
+  const padding = isDownload ? 2 : 8;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
-  // Use viewBox only; let CSS handle sizing (width/height 100%)
-  let svg = `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" style="background: #f8fafc; border-radius: 4px;">`;
 
-  // Seam lines (light gray, thinner)
+  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Seam lines
   svg += `<g id="flat_seams">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.SEAM_CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>`;
+    const strokeWidth = isDownload ? 0.5 : 1.2;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
-  // Fold lines (blue, thicker)
+  // Fold lines
   svg += `<g id="fold_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.FOLD) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>`;
+    const strokeWidth = isDownload ? 1 : 2;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
-  // Cut lines (red, thickest)
+  // Cut lines
   svg += `<g id="cut_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>`;
+    const strokeWidth = isDownload ? 1 : 2;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
