@@ -384,9 +384,13 @@ export function updateOrbitCamera() {
   const fwd   = new THREE.Vector3(-x, -y, -z).normalize();
   const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
   const up    = new THREE.Vector3().crossVectors(right, fwd).normalize();
-  const target = right.multiplyScalar(panX).add(up.multiplyScalar(panY)).add(state.mesh.position);
+  
+  // The target is the center of the mesh plus the panning offset
+  const target = state.mesh.position.clone()
+    .add(right.clone().multiplyScalar(panX))
+    .add(up.clone().multiplyScalar(panY));
 
-  state.camera.position.set(x + target.x, y + target.y, z + target.z);
+  state.camera.position.set(target.x + x, target.y + y, target.z + z);
   state.camera.lookAt(target);
 }
 
