@@ -223,6 +223,7 @@ export function buildModel3D(vertices, faces) {
   corners.forEach(c => bbPos.push(c[0], c[1], c[2]));
   bbGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bbPos), 3));
   state.bbPoints = new THREE.Points(bbGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 2 }));
+  state.bbPoints.visible = false; // hidden — used only for bounding calculations
   state.scene.add(state.bbPoints);
 
   _alignEnvironment(newBox);

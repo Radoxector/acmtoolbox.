@@ -2,224 +2,235 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ACM Unfolder — App</title>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ACM Unfolder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
   <script>
     window.API_URL = 'https://acm-unfolder-api-production.h24111.workers.dev';
   </script>
 </head>
 <body>
-  <!-- Check authentication on page load -->
-  <script src="./auth.js"></script>
+
+  <script src="auth.js"></script>
   <script>
-    if (!isAuthenticated()) {
-      redirectToLogin();
-    }
+    if (!isAuthenticated()) { redirectToLogin(); }
   </script>
 
-  <!-- ═══════════════════ HEADER ═════════════════════════════════════ -->
+  <!-- ═══ HEADER ════════════════════════════════════════════════════════════ -->
   <header class="header">
     <div class="logo">ACM<em>unfolder</em></div>
-    <div class="h-sep"></div>
-
-    <div class="file-zone">
-      <button class="btn" id="loadJsonBtn" title="Upload custom JSON model">⬆ Load JSON</button>
-      <button class="btn" id="loadDemoBtn" title="Load U-channel demo">Demo</button>
+    <div class="header-file">
       <span class="fname" id="fileName">No model loaded</span>
     </div>
-
-    <div class="hdr-actions">
-      <div class="user-info">
-        <span class="user-badge">
-          <span id="usernameDisplay">—</span>
-          <span id="unfoldCounter" class="unfolds-remaining">5/5</span>
-        </span>
+    <div class="header-right">
+      <div class="user-chip">
+        <span id="usernameDisplay">—</span>
+        <span id="unfoldCounter" class="unfold-badge">—</span>
       </div>
       <div class="h-sep"></div>
-      <button class="btn btn-sm" id="toolkitsBtn" title="Back to dashboard">🏠 Toolkits</button>
-      <button class="btn btn-sm danger" id="logoutBtn" title="Logout">↪ Logout</button>
+      <button class="btn ghost btn-sm" id="toolkitsBtn" title="Back to dashboard">🏠</button>
+      <button class="btn danger btn-sm" id="logoutBtn" title="Logout">↪</button>
     </div>
   </header>
 
-  <!-- ═══════════════════ MAIN SPLIT PANES ═════════════════════════ -->
-  <div class="main-container">
-    <div class="split-panes" id="mainArea">
-      <!-- 3D VIEWER -->
-      <div class="pane pane-3d" id="pane3d">
-        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
-          <span>3D PREVIEW — Drag to rotate, scroll to zoom</span>
-          <button class="btn btn-sm" id="resetCameraBtn" title="Reset camera view">🔄 Reset View</button>
-        </div>
-        <canvas id="canvas3d"></canvas>
-      </div>
-
-      <!-- DIVIDER -->
-      <div class="divider" id="splitDrag"></div>
-
-      <!-- 2D VIEWER -->
-      <div class="pane pane-2d" id="pane2d">
-        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500;">
-          2D FLAT PATTERN — Scroll to zoom, drag to pan
-        </div>
-        <div class="svg-viewer" id="svgViewer">
-          <div id="empty2d" style="text-align: center; color: var(--muted);">
-            <div style="font-size: 48px; opacity: 0.5; margin-bottom: 12px;">📐</div>
-            <p>Load a model and click <strong>Unfold</strong> to see the 2D pattern</p>
-          </div>
-          <div id="svgLayer" style="display: none;"></div>
-          <div class="svg-controls">
-            <button class="btn btn-sm" id="zoomIn" title="Zoom in">+</button>
-            <button class="btn btn-sm" id="zoomFit" title="Fit to view">⊡</button>
-            <button class="btn btn-sm" id="zoomOut" title="Zoom out">−</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- DIVIDER -->
-      <div class="divider" id="splitDrag2"></div>
-
-      <!-- LIBRARY PANEL -->
-      <div class="pane pane-library" id="paneLibrary">
-        <div style="padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text2); font-weight: 500;">
-          MODEL LIBRARY
-        </div>
-        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-          <!-- Library dropdown selector -->
-          <div style="padding: 8px 12px; border-bottom: 1px solid var(--border);">
-            <button class="btn btn-sm" id="libraryDropdownBtn" style="width: 100%;">📦 Models ▼</button>
-          </div>
-           <!-- Library slots grid -->
-           <div id="librarySlots" style="flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px;">
-             <!-- Slots will be populated here -->
-           </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════ CONTROLS BAR ═════════════════════════════ -->
-    <div class="controls-bar">
-      <div class="control-section">
-        <div style="font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Dimensions (mm)</div>
-        <div class="control-group">
-          <div class="control-field">
-            <label class="control-label">Width</label>
-            <input type="number" id="dimX" class="control-input" value="200" min="1" step="0.5">
-          </div>
-          <div class="control-field">
-            <label class="control-label">Depth</label>
-            <input type="number" id="dimY" class="control-input" value="100" min="1" step="0.5">
-          </div>
-          <div class="control-field">
-            <label class="control-label">Height</label>
-            <input type="number" id="dimZ" class="control-input" value="75" min="1" step="0.5">
-          </div>
-        </div>
-      </div>
-
-      <div style="width: 1px; height: 60px; background: var(--border); margin: 0 12px;"></div>
-
-      <div class="control-section">
-        <div style="font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Material</div>
-        <div class="control-group">
-          <div class="control-field">
-            <label class="control-label">Color</label>
-            <input type="color" id="colorInput" class="control-input" value="#4a90e2" style="width: 40px; cursor: pointer; height: 28px;">
-          </div>
-          <button class="btn btn-sm" id="wireframeToggle" title="Toggle wireframe overlay">📊 Wireframe</button>
-        </div>
-      </div>
-
-      <div style="flex: 1;"></div>
-
-      <div class="control-section main-actions">
-        <button class="btn primary btn-lg" id="unfoldBtn" disabled>▶ Unfold</button>
-        <button class="btn btn-lg" id="downloadBtn" disabled>↓ Download SVG</button>
-      </div>
-
-      <div style="flex: 1;"></div>
-
-    <!-- ═══════════════════ STATUS BAR ═════════════════════════════ -->
-    <div class="status-bar">
-      <div class="stat-item"><span>Vertices:</span><span class="stat-v" id="stV">—</span></div>
-      <div class="stat-item"><span>Faces:</span><span class="stat-v" id="stF">—</span></div>
-      <div class="stat-item"><span>2D Edges:</span><span class="stat-v" id="stE">—</span></div>
-      <div class="stat-item"><span>Islands:</span><span class="stat-v" id="stI">—</span></div>
-      <span class="status-msg" id="statusMsg">Ready. Load a model or try the demo.</span>
-    </div>
+  <!-- ═══ DESKTOP TAB BAR ══════════════════════════════════════════════════ -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="3d" id="tab3d">
+      <span class="tab-icon">⬡</span> 3D View
+    </button>
+    <button class="tab-btn" data-tab="2d" id="tab2d">
+      <span class="tab-icon">◱</span> 2D Pattern
+    </button>
+    <button class="tab-btn" data-tab="library" id="tabLib">
+      <span class="tab-icon">▦</span> Library
+    </button>
   </div>
 
-  <input type="file" id="fileInput" accept=".json" hidden>
+  <!-- ═══ APP BODY ══════════════════════════════════════════════════════════ -->
+  <div class="app-body">
+
+    <!-- ── PANELS WRAP ─────────────────────────────────────────────────── -->
+    <div class="panels-wrap">
+
+      <!-- PANEL: 3D Viewport -->
+      <div class="panel panel-3d active" id="panel3d">
+        <canvas id="canvas3d"></canvas>
+
+        <!-- Floating vertical toolbar -->
+        <div class="toolbar-3d">
+          <button class="tool-btn" id="resetCameraBtn" title="Reset Camera">⌖</button>
+          <button class="tool-btn" id="wireframeToggle" title="Wireframe">⊟</button>
+          <div class="tool-color-wrap" title="Color">
+            <input type="color" id="colorInput" value="#4a90e2">
+            <div class="tool-color-dot" id="colorDot" style="background:#4a90e2;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL: 2D Flat Pattern -->
+      <div class="panel panel-2d" id="panel2d">
+        <div class="svg-viewer" id="svgViewer">
+          <div id="empty2d" class="empty-2d">
+            <div class="empty-2d-icon">◱</div>
+            <div class="empty-2d-text">Unfold a model to see the pattern here</div>
+          </div>
+          <div id="svgLayer"></div>
+        </div>
+
+        <!-- Zoom pill -->
+        <div class="zoom-pill">
+          <button class="zoom-btn" id="zoomOut" title="Zoom out">−</button>
+          <div class="zoom-divider"></div>
+          <button class="zoom-btn zoom-fit-btn" id="zoomFit">⊡ Fit</button>
+          <div class="zoom-divider"></div>
+          <button class="zoom-btn" id="zoomIn" title="Zoom in">+</button>
+        </div>
+      </div>
+
+      <!-- PANEL: Library -->
+      <div class="panel panel-library" id="panelLib">
+        <div class="library-topbar">
+          <button class="library-upload-btn" id="loadJsonBtn">
+            ⬆ Upload JSON Model
+          </button>
+          <input type="file" id="fileInput" accept=".json" hidden>
+        </div>
+        <div class="library-grid" id="librarySlots"></div>
+      </div>
+
+    </div><!-- end panels-wrap -->
+
+    <!-- ═══ ACTION BAR (always visible) ═══════════════════════════════════ -->
+    <div class="action-bar">
+
+      <!-- Mobile: expand dims -->
+      <div class="dims-expanded" id="dimsExpanded">
+        <div class="dim-field">
+          <span class="dim-label">W</span>
+          <input type="number" id="dimX" class="dim-input" value="200" min="1" step="0.5">
+          <span class="dim-unit">mm</span>
+        </div>
+        <div class="dim-field">
+          <span class="dim-label">D</span>
+          <input type="number" id="dimY" class="dim-input" value="100" min="1" step="0.5">
+          <span class="dim-unit">mm</span>
+        </div>
+        <div class="dim-field">
+          <span class="dim-label">H</span>
+          <input type="number" id="dimZ" class="dim-input" value="75" min="1" step="0.5">
+          <span class="dim-unit">mm</span>
+        </div>
+      </div>
+
+      <div class="action-bar-main">
+
+        <!-- Mobile size toggle -->
+        <button class="btn size-toggle-btn" id="sizeToggleBtn">⚙ Size</button>
+
+        <!-- Desktop dims row -->
+        <div class="dims-row">
+          <div class="dim-field">
+            <span class="dim-label">W</span>
+            <input type="number" id="dimXd" class="dim-input" value="200" min="1" step="0.5">
+            <span class="dim-unit">mm</span>
+          </div>
+          <div class="dim-field">
+            <span class="dim-label">D</span>
+            <input type="number" id="dimYd" class="dim-input" value="100" min="1" step="0.5">
+            <span class="dim-unit">mm</span>
+          </div>
+          <div class="dim-field">
+            <span class="dim-label">H</span>
+            <input type="number" id="dimZd" class="dim-input" value="75" min="1" step="0.5">
+            <span class="dim-unit">mm</span>
+          </div>
+        </div>
+
+        <div class="action-bar-spacer"></div>
+
+        <!-- Primary actions -->
+        <div class="action-btns">
+          <button class="unfold-btn" id="unfoldBtn" disabled>
+            ▶ Unfold
+            <span class="counter-pip" id="counterPip">—</span>
+          </button>
+          <button class="download-btn" id="downloadBtn" disabled>↓ SVG</button>
+        </div>
+
+      </div>
+
+      <!-- Stats drawer -->
+      <button class="stats-toggle" id="statsToggle">▾ Details <span class="arrow">▾</span></button>
+      <div class="stats-row" id="statsRow">
+        <div class="stat-chip">Vertices <strong id="stV">—</strong></div>
+        <div class="stat-chip">Faces <strong id="stF">—</strong></div>
+        <div class="stat-chip">Edges <strong id="stE">—</strong></div>
+        <div class="stat-chip">Islands <strong id="stI">—</strong></div>
+      </div>
+
+    </div><!-- end action-bar -->
+
+    <!-- ═══ MOBILE BOTTOM NAV ════════════════════════════════════════════ -->
+    <div class="bottom-nav" id="bottomNav">
+      <div class="bottom-nav-inner">
+        <button class="nav-btn active" data-tab="3d">
+          <span class="nav-icon">⬡</span>
+          <span class="nav-label">3D</span>
+        </button>
+        <button class="nav-btn" data-tab="2d">
+          <span class="nav-icon">◱</span>
+          <span class="nav-label">2D</span>
+        </button>
+        <button class="nav-btn" data-tab="library">
+          <span class="nav-icon">▦</span>
+          <span class="nav-label">Library</span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- end app-body -->
+
   <div class="toast" id="toast"></div>
 
-  <!-- Help Modal -->
-  <div class="modal-bg" id="helpModal">
-    <div class="modal">
-      <div class="modal-hdr">
-        <span class="modal-title">ACM Unfolder — Guide</span>
-        <button class="btn btn-sm" onclick="document.getElementById('helpModal').style.display='none'">✕</button>
-      </div>
-      <div class="modal-body">
-        <h3>Workflow</h3>
-        <p><strong>1. Load a Model</strong><br>
-        Use the "Load JSON" button to upload a model file exported from Blender, or select from the Models dropdown, or click "Demo" for a sample.</p>
-
-        <p><strong>2. Adjust Dimensions</strong><br>
-        Set the X (width), Y (depth), and Z (height) values. The 3D model updates in real time.</p>
-
-        <p><strong>3. Configure Unfolding</strong><br>
-        • <strong>Seed face:</strong> Which face to start unfolding from (usually a central or large face)<br>
-        • <strong>Flat angle:</strong> Threshold (degrees) for detecting flat folds (angles close to 0° or 180°)</p>
-
-        <p><strong>4. Click Unfold</strong><br>
-        The 2D flat pattern appears on the right. Red lines = cuts, blue lines = folds with angle labels.</p>
-
-        <p><strong>5. Download SVG</strong><br>
-        Export the 2D pattern as SVG (compatible with Inkscape, CorelDRAW, Adobe Illustrator).</p>
-
-        <h3>JSON Model Format</h3>
-        <pre style="background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 10px; font-size: 11px; overflow-x: auto; color: #a8c0d8;">
-{
-  "name": "My Model",
-  "unit": "mm",
-  "vertices": [[x,y,z], [x,y,z], ...],
-  "faces": [[v0,v1,v2,v3], ...],
-  "seam_edges": [[v0,v1], ...]
-}</pre>
-
-        <h3>Edge Types in 2D Pattern</h3>
-        <ul style="margin-left: 16px;">
-          <li><strong style="color: var(--cut-red);">Red lines:</strong> Cut edges (sheet separates here)</li>
-          <li><strong style="color: var(--fold-blue);">Blue lines:</strong> Fold/bend edges with dihedral angle</li>
-          <li><strong style="color: var(--muted);">Gray dashed:</strong> Seam edges (internal folding)</li>
-        </ul>
-
-        <h3>Fold Direction Labels</h3>
-        <p>On blue fold lines, the angle is labeled. Direction:
-          <br>• <strong>VALLEY:</strong> Concave/inward fold
-          <br>• <strong>MOUNTAIN:</strong> Convex/outward fold
-          <br>• <strong>FLAT:</strong> Minimal angle (&lt;threshold or &gt;180°−threshold)</p>
-
-        <h3>Tips</h3>
-        <ul style="margin-left: 16px;">
-          <li>Ensure face normals point outward in Blender (Edit Mode → Mesh → Normals → Recalculate Outside)</li>
-          <li>Mark seam edges in Blender with <code style="background: var(--panel2); padding: 2px 4px; border-radius: 2px;">U → Mark Seam</code></li>
-          <li>For complex models, adjust the seed face if you see overlaps in the 2D pattern</li>
-          <li>Use the dimension sliders to scale the model before unfolding</li>
-        </ul>
-
-        <h3>Rate Limiting</h3>
-        <p>Free tier users have <strong>5 unfolds per day</strong>. The remaining count is displayed in the header. Counter resets at midnight UTC.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════════════ THREE.JS ═════════════════════════════════════ -->
+  <!-- ════ THREE.JS ═══════════════════════════════════════════════════════ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- App Logic -->
+  <!-- Tab switching logic (must be before module script) -->
+  <script>
+    // Global tab switcher — called from app.js too
+    function switchTab(name) {
+      // Panels
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      const target = { '3d': 'panel3d', '2d': 'panel2d', 'library': 'panelLib' }[name];
+      if (target) document.getElementById(target).classList.add('active');
+
+      // Desktop tabs
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
+      });
+
+      // Mobile nav
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
+      });
+
+      // Trigger canvas resize when switching to 3D
+      if (name === '3d') {
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 50);
+      }
+    }
+
+    // Wire up all tab buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.tab-btn, .nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+    });
+  </script>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
