@@ -167,7 +167,7 @@ function downloadSVG() {
 // ─── Build library card ───────────────────────────────────────────────────
 function buildLibraryCard(modelInfo, container) {
   const card = document.createElement('div');
-  card.className = 'model-card';
+  card.className = 'library-slot';
 
   let imgUrl = null;
   if (modelInfo.thumbnail && (modelInfo.thumbnail.startsWith('data:') || modelInfo.thumbnail.startsWith('http'))) {
@@ -177,13 +177,11 @@ function buildLibraryCard(modelInfo, container) {
   }
 
   card.innerHTML = `
-    <div class="model-card-thumb">
+    <div class="library-slot-thumbnail">
       ${imgUrl ? `<img src="${imgUrl}" alt="${modelInfo.name}" onerror="this.style.display='none'">` : ''}
-      <div class="thumb-placeholder">📦</div>
+      ${!imgUrl ? `<div class="thumb-placeholder">📦</div>` : ''}
     </div>
-    <div class="model-card-info">
-      <div class="model-card-name">${modelInfo.name}</div>
-    </div>
+    <div class="library-slot-name">${modelInfo.name}</div>
   `;
 
   card.addEventListener('click', async () => {
