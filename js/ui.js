@@ -75,16 +75,33 @@ export function centerSVG() {
   // Clear transform for a clean measurement
   svgElem.style.transform = '';
 
+  // Use getBoundingClientRect on the SVG itself to get its actual rendered size in the viewport
   const cRect    = container.getBoundingClientRect();
   const sRect    = svgElem.getBoundingClientRect();
-  if (!sRect.width || !sRect.height) return;
+  
+  // If the SVG is not yet rendered or has no size, abort
+  if (sRect.width === 0 || sRect.height === 0) return;
 
+  // Calculate scale to fit within 90% of container
   const scaleX   = (cRect.width  * 0.9) / sRect.width;
   const scaleY   = (cRect.height * 0.9) / sRect.height;
   const fitScale = Math.min(scaleX, scaleY, 1);
 
+  // Calculate pan to center the element
+  // The current position is where the element naturally sits in the flex/absolute flow.
+  // To center it exactly, we find the offset between the container center and the SVG center.
+  const cCenterX = cRect.left + cRect.width / 2;
+  const cCenterY = cRect.top + cRect.height / 2;
+  const sCenterX = sRect.left + sRect.width / 2;
+  const sCenterY = sRect.top + sRect.height / 2;
+
+  // The transformation is applied from 'center center'.
+  // To center a scaled element, the translation should be the delta between centers.
+  const targetPanX = (cCenterX - sCenterX) * fitScale;
+  const targetPanY = (cCenterY - sCenterY) * fitScale;
+
   state.svgZoom = fitScale;
-  state.svgPan  = { x: 0, y: 0 };
+  state.svgPan  = { x: targetPanX, y: targetPanY };
   updateSVGTransform();
 }
 
@@ -106,7 +123,7 @@ function renderSVG(result) {
   const h = maxY - minY;
   const unit = state.modelData?.unit || 'mm';
 
-  const padding = 2;
+  const padding = 5; // Increased padding for better visibility of edge lines
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
   let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
@@ -117,7 +134,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.SEAM_CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="0.5"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="0.8"/>`;
   });
   svg += `</g>`;
 
@@ -127,7 +144,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.FOLD) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="1"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="1.2"/>`;
   });
   svg += `</g>`;
 
@@ -137,7 +154,7 @@ function renderSVG(result) {
     if (edge_types[i] !== EdgeType.CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="1"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="1.2"/>`;
   });
   svg += `</g>`;
 
