@@ -426,28 +426,93 @@ body {
   border-color: var(--accent);
 }
 
-.library-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
-  align-content: start;
-}
+  .library-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+    align-content: start;
+  }
 
-.library-slot {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 160px;
-}
+  .library-slot {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  @media (max-width: 768px) {
+    .library-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      padding: 10px;
+      gap: 10px;
+    }
+    
+    .library-slot {
+      padding: 8px;
+      gap: 6px;
+    }
+  }
+
+  .library-slot:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent);
+    box-shadow: 0 10px 25px var(--shadow);
+  }
+
+  .library-slot-thumbnail {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--bg);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: var(--muted);
+    overflow: hidden;
+    border: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+
+  .library-slot-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .library-slot-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+  }
+
+
+  .library-slot {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 0;
+  }
+
 
 .library-slot:hover {
   transform: translateY(-5px);
@@ -455,19 +520,21 @@ body {
   box-shadow: 0 10px 25px var(--shadow);
 }
 
-.library-slot-thumbnail {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: var(--bg);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  color: var(--muted);
-  overflow: hidden;
-  border: 1px solid var(--border2);
-}
+  .library-slot-thumbnail {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--bg);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: var(--muted);
+    overflow: hidden;
+    border: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+
 
 .library-slot-thumbnail img {
   width: 100%;
@@ -475,15 +542,17 @@ body {
   object-fit: cover;
 }
 
-.library-slot-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
+  .library-slot-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+  }
+
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Action Bar */
