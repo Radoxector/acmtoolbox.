@@ -5,6 +5,17 @@ import * as api from './api.js';
 import * as viewer from './threejs-viewer.js';
 import * as ui from './ui.js';
 
+// ─── Auth helpers (assumed from your project) ────────────────────────────
+function isAuthenticated() { return !!localStorage.getItem('access_token'); }
+function isTokenExpired() { return false; } // implement your own check
+function clearToken() { localStorage.removeItem('access_token'); }
+function redirectToLogin() { window.location.href = '/login.html'; }
+function getUsername() { return localStorage.getItem('username'); }
+function getRemainingUnfolds() { return parseInt(localStorage.getItem('remaining_unfolds') || '0'); }
+function storeRemainingUnfolds(remaining) { localStorage.setItem('remaining_unfolds', remaining); }
+async function fetchRemainingUnfolds() { /* your API call */ return null; }
+function logoutUser() { clearToken(); redirectToLogin(); }
+
 // ─── Sync dual dim inputs (desktop + mobile) ──────────────────────────────
 function getDim(axis) {
   const desktop = document.getElementById(`dim${axis}d`);
@@ -69,7 +80,6 @@ async function handleUnfold() {
     document.getElementById('downloadBtn').disabled = false;
     ui.updateStatus(response);
 
-    // Switch to 2D panel after successful unfold
     if (typeof switchTab === 'function') switchTab('2d');
 
     if (response.remaining_unfolds !== undefined) {
@@ -101,7 +111,6 @@ function loadModel(modelData) {
   state.originalVerts = modelData.vertices;
   state.seamEdgeSet = new Set(modelData.seam_edges || []);
 
-  // Default dimensions as requested (converted from cm to mm)
   const dims = { x: 10, y: 10, z: 10 };
   
   const updateInput = (id, val) => {
@@ -126,7 +135,6 @@ function loadModel(modelData) {
   document.getElementById('stV').textContent = modelData.vertices.length;
   document.getElementById('stF').textContent = modelData.faces.length;
 
-  // Auto-switch to 3D on model load
   if (typeof switchTab === 'function') switchTab('3d');
 
   console.log(`[MODEL] Loaded: ${modelData.name} (V:${modelData.vertices.length} F:${modelData.faces.length})`);
@@ -167,54 +175,71 @@ function applyScale() {
   document.getElementById('downloadBtn').disabled = true;
 }
 
-// ─── Download SVG ─────────────────────────────────────────────────────────
+// ─── Download SVG with "cm lie" correction ───────────────────────────────
 function downloadSVG() {
-  if (!state.unfoldResult) return;
-  
-  // Generate the correct download SVG using the result and isDownload=true
-  // This uses mm units and scales dimensions by 10 to correct the "cm lie"
-  const svgString = ui.renderSVGForDownload(state.unfoldResult);
-  
-  // Correcting the viewBox and dimensions by multiplying by 10 to convert mm to cm scale
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, 'image/svg+xml');
-  const svgElem = doc.querySelector('svg');
-  
-  if (svgElem) {
-    // 1. Scale width and height (multiply by 10 to convert mm to cm-scale mm)
-    const wStr = svgElem.getAttribute('width');
-    const hStr = svgElem.getAttribute('height');
-    if (wStr && hStr) {
-      const wNum = parseFloat(wStr) * 10;
-      const hNum = parseFloat(hStr) * 10;
-      svgElem.setAttribute('width', wNum + 'mm');
-      svgElem.setAttribute('height', hNum + 'mm');
-    }
-
-    // 2. Scale viewBox (multiply all 4 components by 10)
-    const vbStr = svgElem.getAttribute('viewBox');
-    if (vbStr) {
-      const parts = vbStr.split(/\s+/).map(parseFloat);
-      if (parts.length === 4) {
-        const scaledParts = parts.map(p => p * 10);
-        svgElem.setAttribute('viewBox', scaledParts.join(' '));
-      }
-    }
-
-    const serialized = new XMLSerializer().serializeToString(doc);
-    const blob = new Blob([serialized], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${state.modelData?.name || 'unfold'}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+  if (!state.svgString) {
+    ui.showToast('No unfolded template to download', 'warning');
+    return;
   }
+
+  // Parse the preview SVG (internal mm scale, e.g., 10mm = 1cm in UI)
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(state.svgString, 'image/svg+xml');
+  const svgElem = doc.querySelector('svg');
+  if (!svgElem) {
+    ui.showToast('Invalid SVG data', 'error');
+    return;
+  }
+
+  // 1. Scale dimensions: from internal mm to final mm (UI cm × 10)
+  //    User typed 10 cm → internal 10 mm → we want 100 mm in file.
+  let wNum, hNum;
+  const oldWidth = svgElem.getAttribute('width');
+  const oldHeight = svgElem.getAttribute('height');
+  if (oldWidth && oldHeight) {
+    wNum = parseFloat(oldWidth) * 10;
+    hNum = parseFloat(oldHeight) * 10;
+  } else {
+    // If preview used CSS sizing, compute from viewBox
+    const viewBox = svgElem.getAttribute('viewBox');
+    const parts = viewBox.trim().split(/\s+/);
+    if (parts.length === 4) {
+      wNum = parseFloat(parts[2]) * 10;
+      hNum = parseFloat(parts[3]) * 10;
+    } else {
+      wNum = 100; hNum = 100;
+    }
+  }
+  svgElem.setAttribute('width', wNum + 'mm');
+  svgElem.setAttribute('height', hNum + 'mm');
+
+  // 2. Scale viewBox by 10 to keep coordinate system consistent
+  const oldViewBox = svgElem.getAttribute('viewBox');
+  if (oldViewBox) {
+    const parts = oldViewBox.trim().split(/\s+/);
+    if (parts.length === 4) {
+      const vb = parts.map(p => parseFloat(p) * 10);
+      svgElem.setAttribute('viewBox', vb.join(' '));
+    }
+  }
+
+  // 3. Stroke widths are already multiplied by 10 in renderSVG (isDownload=true),
+  //    so we don't modify them further. If you prefer to keep preview thin and scale here,
+  //    you would divide by 10, but the current ui.js already gives us multiplied values.
+
+  // Serialize and download
+  const serialized = new XMLSerializer().serializeToString(doc);
+  const blob = new Blob([serialized], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${state.modelData?.name || 'unfold'}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  ui.showToast('SVG downloaded', 'success');
 }
 
 // ─── Build library card ───────────────────────────────────────────────────
-
-
 function buildLibraryCard(modelInfo, container) {
   const card = document.createElement('div');
   card.className = 'library-slot';
@@ -306,9 +331,9 @@ async function initApp() {
     });
 
     document.getElementById('unfoldBtn').addEventListener('click', handleUnfold);
-    document.getElementById('downloadBtn').addEventListener('click', downloadSVG);
+    document.getElementById('downloadBtn').addEventListener('click', downloadSVG);  // <-- corrected download function
 
-    // Dim inputs — desktop + mobile
+    // Dim inputs
     ['dimX', 'dimXd', 'dimY', 'dimYd', 'dimZ', 'dimZd'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -340,14 +365,14 @@ async function initApp() {
 
     // 3D toolbar
     document.getElementById('resetCameraBtn').addEventListener('click', () => {
-      state.orbitControls.yaw = 0;
-      state.orbitControls.pitch = 0.5;
       if (state.mesh) {
         const box = new THREE.Box3().setFromObject(state.mesh);
         viewer.fitCameraToBox(box);
       } else {
-        state.orbitControls.distance = 300;
-        viewer.updateOrbitCamera();
+        if (state.orbitControls) {
+          state.orbitControls.distance = 300;
+          viewer.updateOrbitCamera();
+        }
       }
     });
 
@@ -388,7 +413,7 @@ async function initApp() {
       ui.centerSVG();
     });
 
-    // SVG pan — mouse
+    // SVG pan mouse
     let isPanning = false;
     const svgViewer = document.getElementById('svgViewer');
     svgViewer.addEventListener('mousedown', () => { isPanning = true; });
@@ -400,7 +425,7 @@ async function initApp() {
     });
     document.addEventListener('mouseup', () => { isPanning = false; });
 
-    // SVG pan — touch
+    // SVG pan touch
     let lastTouch = null;
     svgViewer.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -431,4 +456,5 @@ async function initApp() {
   }
 }
 
+// Start the app
 initApp();

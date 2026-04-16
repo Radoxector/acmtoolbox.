@@ -47,7 +47,8 @@ export function updateRemainingUnfolds(remaining) {
 
 // ─── Display SVG ──────────────────────────────────────────────────────────
 export function displaySVG(result) {
-  const svg = renderSVG(result, false); // false = preview mode
+  // Generate preview SVG (no mm dimensions, stroke widths for screen)
+  const svg = renderSVG(result, false);
   state.svgString = svg;
 
   const svgLayer = document.getElementById('svgLayer');
@@ -66,65 +67,45 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait for layout to settle (two frames)
   requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
 }
 
-// ─── Center SVG to fit container with 10% padding ────────────────────────
+// ─── Center SVG content (accounts for viewBox offset) ────────────────────
 export function centerSVG() {
   const svgLayer  = document.getElementById('svgLayer');
   const svgElem   = svgLayer?.querySelector('svg');
   const container = document.getElementById('svgViewer');
   if (!svgElem || !container) return;
 
-  // Reset transform to measure natural size
   svgElem.style.transform = '';
-
-  // Get container dimensions
   const cRect = container.getBoundingClientRect();
   if (cRect.width === 0 || cRect.height === 0) return;
 
-  // Get SVG intrinsic dimensions from viewBox (most reliable)
-  let svgWidth, svgHeight;
   const viewBox = svgElem.getAttribute('viewBox');
-  if (viewBox) {
-    const parts = viewBox.trim().split(/\s+/);
-    if (parts.length === 4) {
-      svgWidth  = parseFloat(parts[2]);
-      svgHeight = parseFloat(parts[3]);
-    }
-  }
-  
-  // Fallback to getBoundingClientRect if viewBox is somehow invalid
-  if (!svgWidth || !svgHeight) {
-    const sRect = svgElem.getBoundingClientRect();
-    svgWidth  = sRect.width;
-    svgHeight = sRect.height;
-  }
-  
-  if (svgWidth === 0 || svgHeight === 0) return;
+  if (!viewBox) return;
+  const parts = viewBox.trim().split(/\s+/);
+  if (parts.length !== 4) return;
+  const [vbMinX, vbMinY, vbW, vbH] = parts.map(parseFloat);
+  if (vbW === 0 || vbH === 0) return;
 
-  // Compute scale to fit with 10% padding
-  const scaleX = (cRect.width  * 0.9) / svgWidth;
-  const scaleY = (cRect.height * 0.9) / svgHeight;
+  const scaleX = (cRect.width  * 0.9) / vbW;
+  const scaleY = (cRect.height * 0.9) / vbH;
   let fitScale = Math.min(scaleX, scaleY);
-  
-  // Limit zoom range
   fitScale = Math.max(0.01, Math.min(fitScale, 10));
 
-  // Compute center offset
-  const visualWidth  = svgWidth  * fitScale;
-  const visualHeight = svgHeight * fitScale;
-  
-  const panX = (cRect.width - visualWidth) / 2;
-  const panY = (cRect.height - visualHeight) / 2;
+  const contentCenterX = vbMinX + vbW / 2;
+  const contentCenterY = vbMinY + vbH / 2;
+  const targetX = cRect.width  / 2;
+  const targetY = cRect.height / 2;
+
+  const panX = targetX - contentCenterX * fitScale;
+  const panY = targetY - contentCenterY * fitScale;
 
   state.svgZoom = fitScale;
   state.svgPan  = { x: panX, y: panY };
   updateSVGTransform();
 }
 
-// ─── Apply CSS transform to SVG ───────────────────────────────────────────
 export function updateSVGTransform() {
   const layer = document.getElementById('svgLayer');
   const svg   = layer?.querySelector('svg');
@@ -134,46 +115,48 @@ export function updateSVGTransform() {
   }
 }
 
-// ─── Render SVG string (preview or download) ──────────────────────────────
-export function renderSVG(result, isDownload = false) {
+// ─── Render SVG (unified for preview and download) ───────────────────────
+function renderSVG(result, isDownload = false) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
   const w = maxX - minX;
   const h = maxY - minY;
-
   const padding = isDownload ? 2 : 8;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
-  // For preview: no explicit width/height – CSS will size it
-  // For download: use mm units so the file is ready for CNC
+  // For download, we need width/height in mm; for preview we omit them (CSS handles sizing)
   let svg = isDownload
-    ? `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`
+    ? `<svg width="${(w + padding * 2)}mm" height="${(h + padding * 2)}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`
     : `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // Helper to add lines
-  const addLines = (edgeIndices, stroke, strokeWidth, type) => {
-    edges.forEach((edge, i) => {
-      if (edge_types[i] !== type) return;
-      const [x1, y1] = verts2d[edge[0]];
-      const [x2, y2] = verts2d[edge[1]];
-      // If downloading, the scale is multiplied by 10, so we must also multiply stroke-width by 10 to keep it visually same
-      const finalStrokeWidth = isDownload ? strokeWidth * 10 : strokeWidth;
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
-    });
-  };
+  // Stroke widths: preview uses thin lines; download scales strokes by 10x
+  // because the whole file will be scaled by 10 later in app.js.
+  const getStroke = (baseWidth) => isDownload ? baseWidth * 10 : baseWidth;
 
-  // Seam lines (light gray)
-  addLines(edges, '#ff0000', isDownload ? 0.5 : 1.2, EdgeType.SEAM_CUT);
-  // Fold lines (blue)
-  addLines(edges, '#2563eb', isDownload ? 1 : 2, EdgeType.FOLD);
-  // Cut lines (red)
-  addLines(edges, '#dc2626', isDownload ? 1 : 2, EdgeType.CUT);
+  edges.forEach((edge, i) => {
+    const type = edge_types[i];
+    if (type === undefined) return;
+    const [x1, y1] = verts2d[edge[0]];
+    const [x2, y2] = verts2d[edge[1]];
+    let stroke, width;
+    switch (type) {
+      case EdgeType.SEAM_CUT:
+        stroke = '#94a3b8';
+        width = getStroke(0.8);
+        break;
+      case EdgeType.FOLD:
+        stroke = '#2563eb';
+        width = getStroke(1.5);
+        break;
+      case EdgeType.CUT:
+        stroke = '#dc2626';
+        width = getStroke(1.5);
+        break;
+      default: return;
+    }
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round"/>`;
+  });
 
   svg += `</svg>`;
   return svg;
-}
-
-// ─── Helper for download ──────────────────────────────────────────────────
-export function renderSVGForDownload(result) {
-  return renderSVG(result, true);
 }
