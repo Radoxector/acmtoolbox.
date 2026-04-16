@@ -120,9 +120,11 @@ function loadModel(modelData) {
      // Convert to mm if unit is meter
      const multiplier = modelData.unit === 'meter' ? (modelData.unit_mm || 1000) : 1;
      
-     dims.x = width * multiplier;
-     dims.y = height * multiplier;
-     dims.z = depth * multiplier;
+     // Divide by 10 because we show cm in the UI but operate in mm (the "cm lie")
+     const cmScale = 0.1;
+     dims.x = (width * multiplier) * cmScale;
+     dims.y = (height * multiplier) * cmScale;
+     dims.z = (depth * multiplier) * cmScale;
    }
    
    const updateInput = (id, val) => {
