@@ -177,57 +177,47 @@ function applyScale() {
 
 // ─── Download SVG with "cm lie" correction ───────────────────────────────
 function downloadSVG() {
-  if (!state.svgString) {
+  if (!state.unfoldResult) {
     ui.showToast('No unfolded template to download', 'warning');
     return;
   }
 
-  // Parse the preview SVG (internal mm scale, e.g., 10mm = 1cm in UI)
+  // Generate the correct download SVG using the result and isDownload=true
+  // This uses mm units and scales dimensions by 10 to correct the "cm lie"
+  const svgString = ui.renderSVGForDownload(state.unfoldResult);
+
+  // Correcting the viewBox and dimensions by multiplying by 10 to convert mm to cm scale
   const parser = new DOMParser();
-  const doc = parser.parseFromString(state.svgString, 'image/svg+xml');
+  const doc = parser.parseFromString(svgString, 'image/svg+xml');
   const svgElem = doc.querySelector('svg');
   if (!svgElem) {
     ui.showToast('Invalid SVG data', 'error');
     return;
   }
 
-  // 1. Scale dimensions: from internal mm to final mm (UI cm × 10)
-  //    User typed 10 cm → internal 10 mm → we want 100 mm in file.
-  let wNum, hNum;
+  // 1. Scale width and height (multiply by 10 to convert mm to cm-scale mm)
   const oldWidth = svgElem.getAttribute('width');
   const oldHeight = svgElem.getAttribute('height');
   if (oldWidth && oldHeight) {
-    wNum = parseFloat(oldWidth) * 10;
-    hNum = parseFloat(oldHeight) * 10;
-  } else {
-    // If preview used CSS sizing, compute from viewBox
-    const viewBox = svgElem.getAttribute('viewBox');
-    const parts = viewBox.trim().split(/\s+/);
-    if (parts.length === 4) {
-      wNum = parseFloat(parts[2]) * 10;
-      hNum = parseFloat(parts[3]) * 10;
-    } else {
-      wNum = 100; hNum = 100;
-    }
+    const wNum = parseFloat(oldWidth) * 10;
+    const hNum = parseFloat(oldHeight) * 10;
+    svgElem.setAttribute('width', wNum + 'mm');
+    svgElem.setAttribute('height', hNum + 'mm');
   }
-  svgElem.setAttribute('width', wNum + 'mm');
-  svgElem.setAttribute('height', hNum + 'mm');
 
-  // 2. Scale viewBox by 10 to keep coordinate system consistent
+  // 2. Scale viewBox (multiply all 4 components by 10)
   const oldViewBox = svgElem.getAttribute('viewBox');
   if (oldViewBox) {
-    const parts = oldViewBox.trim().split(/\s+/);
+    const parts = oldViewBox.trim().split(/\s+/).map(parseFloat);
     if (parts.length === 4) {
-      const vb = parts.map(p => parseFloat(p) * 10);
+      const vb = parts.map(p => p * 10);
       svgElem.setAttribute('viewBox', vb.join(' '));
     }
   }
 
   // 3. Stroke widths are already multiplied by 10 in renderSVG (isDownload=true),
-  //    so we don't modify them further. If you prefer to keep preview thin and scale here,
-  //    you would divide by 10, but the current ui.js already gives us multiplied values.
+  //    so we don't modify them further here.
 
-  // Serialize and download
   const serialized = new XMLSerializer().serializeToString(doc);
   const blob = new Blob([serialized], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
@@ -238,6 +228,7 @@ function downloadSVG() {
   URL.revokeObjectURL(url);
   ui.showToast('SVG downloaded', 'success');
 }
+
 
 // ─── Build library card ───────────────────────────────────────────────────
 function buildLibraryCard(modelInfo, container) {
