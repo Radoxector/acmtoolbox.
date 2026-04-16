@@ -102,9 +102,32 @@ function loadModel(modelData) {
   state.seamEdgeSet = new Set(modelData.seam_edges || []);
 
   // Default dimensions as requested
-  const dims = { x: 100, y: 100, z: 100 };
-  
-  const updateInput = (id, val) => {
+   let dims = { x: 100, y: 100, z: 100 };
+   
+   // Calculate model dimensions from vertices
+   if (modelData.vertices && modelData.vertices.length > 0) {
+     const minX = Math.min(...modelData.vertices.map(v => v[0]));
+     const maxX = Math.max(...modelData.vertices.map(v => v[0]));
+     const minY = Math.min(...modelData.vertices.map(v => v[1]));
+     const maxY = Math.max(...modelData.vertices.map(v => v[1]));
+     const minZ = Math.min(...modelData.vertices.map(v => v[2]));
+     const maxZ = Math.max(...modelData.vertices.map(v => v[2]));
+     
+     const width = maxX - minX;
+     const height = maxY - minY;
+     const depth = maxZ - minZ;
+
+     // Convert to mm if unit is meter
+     const multiplier = modelData.unit === 'meter' ? (modelData.unit_mm || 1000) : 1;
+     
+     dims.x = width * multiplier;
+     dims.y = height * multiplier;
+     dims.z = depth * multiplier;
+   }
+   
+   const updateInput = (id, val) => {
+
+
     const el = document.getElementById(id);
     if (el) el.value = val;
   };
