@@ -47,7 +47,7 @@ export function updateRemainingUnfolds(remaining) {
 
 // ─── Display SVG ──────────────────────────────────────────────────────────
 export function displaySVG(result) {
-  const svg = renderSVG(result, false); // false = preview mode
+  const svg = renderPreviewSVG(result);
   state.svgString = svg;
 
   const svgLayer = document.getElementById('svgLayer');
@@ -134,40 +134,59 @@ export function updateSVGTransform() {
   }
 }
 
-// ─── Render SVG string (preview or download) ──────────────────────────────
-export function renderSVG(result, isDownload = false) {
+// ─── Render Preview SVG (Web/CSS based) ───────────────────────────────────
+export function renderPreviewSVG(result) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
   const w = maxX - minX;
   const h = maxY - minY;
-
-  const padding = isDownload ? 2 : 8;
+  const padding = 8;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
-  // For preview: no explicit width/height – CSS will size it
-  // For download: use mm units so the file is ready for CNC
-  let svg = isDownload
-    ? `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`
-    : `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // Helper to add lines
-  const addLines = (edgeIndices, stroke, strokeWidth, type) => {
+  const addLines = (stroke, strokeWidth, type) => {
     edges.forEach((edge, i) => {
       if (edge_types[i] !== type) return;
       const [x1, y1] = verts2d[edge[0]];
       const [x2, y2] = verts2d[edge[1]];
-      // If downloading, the scale is multiplied by 10, so we must also multiply stroke-width by 10 to keep it visually same
-      const finalStrokeWidth = isDownload ? strokeWidth * 10 : strokeWidth;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+    });
+  };
+
+  addLines('#94a3b8', 1.2, EdgeType.SEAM_CUT);
+  addLines('#2563eb', 2, EdgeType.FOLD);
+  addLines('#dc2626', 2, EdgeType.CUT);
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// ─── Render Download SVG (CNC/mm based) ───────────────────────────────────
+export function renderDownloadSVG(result) {
+  const { verts2d, edges, edge_types, bounding_box } = result;
+  const [minX, minY, maxX, maxY] = bounding_box;
+  const w = maxX - minX;
+  const h = maxY - minY;
+  const padding = 2;
+  const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
+
+  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
+
+  const addLines = (stroke, strokeWidth, type) => {
+    edges.forEach((edge, i) => {
+      if (edge_types[i] !== type) return;
+      const [x1, y1] = verts2d[edge[0]];
+      const [x2, y2] = verts2d[edge[1]];
+      // Scale stroke width by 10 because the file will be scaled up by 10 in app.js
+      const finalStrokeWidth = strokeWidth * 10;
       svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
     });
   };
 
-  // Seam lines (light gray)
-  addLines(edges, '#ff0000', isDownload ? 0.5 : 1.2, EdgeType.SEAM_CUT);
-  // Fold lines (blue)
-  addLines(edges, '#2563eb', isDownload ? 1 : 2, EdgeType.FOLD);
-  // Cut lines (red)
-  addLines(edges, '#dc2626', isDownload ? 1 : 2, EdgeType.CUT);
+  addLines('#94a3b8', 0.5, EdgeType.SEAM_CUT);
+  addLines('#2563eb', 1, EdgeType.FOLD);
+  addLines('#dc2626', 1, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
@@ -175,5 +194,5 @@ export function renderSVG(result, isDownload = false) {
 
 // ─── Helper for download ──────────────────────────────────────────────────
 export function renderSVGForDownload(result) {
-  return renderSVG(result, true);
+  return renderDownloadSVG(result);
 }
