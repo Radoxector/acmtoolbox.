@@ -186,7 +186,7 @@ export function renderDownloadSVG(result) {
       
       // We multiply the stroke-width by the scale so it remains visually 
       // consistent in the 10x larger coordinate system.
-      const finalStrokeWidth = strokeWidth * scale;
+      const finalStrokeWidth = strokeWidth * 2;
       svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
     });
   };
