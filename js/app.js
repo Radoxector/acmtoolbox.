@@ -26,9 +26,9 @@ async function handleUnfold() {
     return;
   }
 
-  const x = getDim('X');
-  const y = getDim('Y');
-  const z = getDim('Z');
+  const x = getDim('X') * 10;
+  const y = getDim('Y') * 10;
+  const z = getDim('Z') * 10;
 
   const origBB = {
     minX: Math.min(...state.originalVerts.map(v => v[0])),
@@ -101,8 +101,8 @@ function loadModel(modelData) {
   state.originalVerts = modelData.vertices;
   state.seamEdgeSet = new Set(modelData.seam_edges || []);
 
-  // Default dimensions as requested
-  const dims = { x: 100, y: 100, z: 100 };
+  // Default dimensions as requested (converted from cm to mm)
+  const dims = { x: 10, y: 10, z: 10 };
   
   const updateInput = (id, val) => {
     const el = document.getElementById(id);
@@ -135,9 +135,9 @@ function loadModel(modelData) {
 
 // ─── Apply scale ──────────────────────────────────────────────────────────
 function applyScale() {
-  const x = getDim('X');
-  const y = getDim('Y');
-  const z = getDim('Z');
+  const x = getDim('X') * 10;
+  const y = getDim('Y') * 10;
+  const z = getDim('Z') * 10;
 
   const origBB = {
     minX: Math.min(...state.originalVerts.map(v => v[0])),
@@ -170,13 +170,56 @@ function applyScale() {
 // ─── Download SVG ─────────────────────────────────────────────────────────
 function downloadSVG() {
   if (!state.svgString) return;
-  const blob = new Blob([state.svgString], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${state.modelData?.name || 'unfold'}.svg`;
-  a.click();
-  URL.revokeObjectURL(url);
+  
+  // Create a copy of the SVG string to manipulate
+  let svgToDownload = state.svgString;
+  
+  // Replace all occurrences of "mm" with "mm" but scale the numbers? 
+  // No, it's better to just manipulate the SVG string by scaling its contents.
+  // Actually, the easiest way is to recreate the SVG with scaled dimensions.
+  // But we don't have the original result here.
+  
+  // Let's try to parse the current SVG and scale it.
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgToDownload, 'image/svg+xml');
+  const svgElem = doc.querySelector('svg');
+  
+  if (svgElem) {
+    // 1. Update width and height (multiply by 10)
+    const oldWidth = svgElem.getAttribute('width');
+    const oldHeight = svgElem.getAttribute('height');
+    
+    // We need to strip the 'mm' part to multiply
+    const wNum = parseFloat(oldWidth);
+    const hNum = parseFloat(oldHeight);
+    
+    svgElem.setAttribute('width', (wNum * 10) + 'mm');
+    svgElem.setAttribute('height', (hNum * 10) + 'mm');
+    
+    // 2. Update viewBox to scale the internal coordinates
+    const oldViewBox = svgElem.getAttribute('viewBox');
+    if (oldViewBox) {
+      const parts = oldViewBox.trim().split(/\s+/);
+      if (parts.length === 4) {
+        const vb = parts.map(p => parseFloat(p) * 10);
+        svgElem.setAttribute('viewBox', vb.join(' '));
+      }
+    }
+
+    // 3. Scale all elements inside the SVG
+    // The easiest way is to wrap everything in a <g> and scale it, 
+    // but since we also scaled the viewBox, we don't need to scale elements, 
+    // just the viewBox and width/height.
+    
+    const serialized = new XMLSerializer().serializeToString(doc);
+    const blob = new Blob([serialized], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.modelData?.name || 'unfold'}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ─── Build library card ───────────────────────────────────────────────────
