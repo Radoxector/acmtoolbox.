@@ -25,7 +25,6 @@ export function updateStatus(data) {
 export function updateRemainingUnfolds(remaining) {
   const displayText = remaining > 999 ? '∞' : String(remaining);
 
-  // Header badge
   const badge = document.getElementById('unfoldCounter');
   if (badge) {
     badge.textContent = displayText;
@@ -34,7 +33,6 @@ export function updateRemainingUnfolds(remaining) {
     else if (remaining <= 2)  badge.classList.add('warn');
   }
 
-  // Pip on unfold button
   const pip = document.getElementById('counterPip');
   if (pip) {
     pip.textContent = displayText;
@@ -55,13 +53,21 @@ export function displaySVG(result) {
   const svgLayer = document.getElementById('svgLayer');
   svgLayer.innerHTML = svg;
 
+  // Make SVG fill the container (overrides the mm width/height)
+  const svgElem = svgLayer.querySelector('svg');
+  if (svgElem) {
+    svgElem.style.width = '100%';
+    svgElem.style.height = '100%';
+    svgElem.style.display = 'block';
+  }
+
   const empty2d = document.getElementById('empty2d');
   if (empty2d) empty2d.style.display = 'none';
 
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait two frames for layout to settle before centering
+  // Wait for layout to settle before centering
   requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
 }
 
@@ -72,36 +78,48 @@ export function centerSVG() {
   const container = document.getElementById('svgViewer');
   if (!svgElem || !container) return;
 
-  // Clear transform for a clean measurement
+  // Reset transform to measure natural size
   svgElem.style.transform = '';
 
-  // Use getBoundingClientRect on the SVG itself to get its actual rendered size in the viewport
-  const cRect    = container.getBoundingClientRect();
-  const sRect    = svgElem.getBoundingClientRect();
-  
-  // If the SVG is not yet rendered or has no size, abort
-  if (sRect.width === 0 || sRect.height === 0) return;
+  // Get container dimensions
+  const cRect = container.getBoundingClientRect();
+  if (cRect.width === 0 || cRect.height === 0) return;
 
-  // Calculate scale to fit within 90% of container
-  const scaleX   = (cRect.width  * 0.9) / sRect.width;
-  const scaleY   = (cRect.height * 0.9) / sRect.height;
-  const fitScale = Math.min(scaleX, scaleY, 1);
+  // Get SVG intrinsic dimensions from viewBox or fallback to getBoundingClientRect
+  let svgWidth, svgHeight;
+  const viewBox = svgElem.getAttribute('viewBox');
+  if (viewBox) {
+    const parts = viewBox.trim().split(/\s+/);
+    if (parts.length === 4) {
+      svgWidth  = parseFloat(parts[2]);
+      svgHeight = parseFloat(parts[3]);
+    }
+  }
+  if (!svgWidth || !svgHeight) {
+    const sRect = svgElem.getBoundingClientRect();
+    svgWidth  = sRect.width;
+    svgHeight = sRect.height;
+  }
+  if (svgWidth === 0 || svgHeight === 0) return;
 
-  // Calculate pan to center the element
-  // The current position is where the element naturally sits in the flex/absolute flow.
-  // To center it exactly, we find the offset between the container center and the SVG center.
-  const cCenterX = cRect.left + cRect.width / 2;
-  const cCenterY = cRect.top + cRect.height / 2;
-  const sCenterX = sRect.left + sRect.width / 2;
-  const sCenterY = sRect.top + sRect.height / 2;
+  // Compute scale to fit with 10% padding
+  const scaleX = (cRect.width  * 0.9) / svgWidth;
+  const scaleY = (cRect.height * 0.9) / svgHeight;
+  let fitScale = Math.min(scaleX, scaleY);
+  // Limit zoom to 10x maximum (prevents ridiculous enlargement)
+  fitScale = Math.min(fitScale, 10);
+  // Also ensure we don't zoom out below 0.1 (makes lines too thin)
+  fitScale = Math.max(fitScale, 0.1);
 
-  // The transformation is applied from 'center center'.
-  // To center a scaled element, the translation should be the delta between centers.
-  const targetPanX = (cCenterX - sCenterX) * fitScale;
-  const targetPanY = (cCenterY - sCenterY) * fitScale;
+  // Compute center offset
+  // After scaling, the SVG's visual size will be svgWidth * fitScale, svgHeight * fitScale
+  const visualWidth  = svgWidth  * fitScale;
+  const visualHeight = svgHeight * fitScale;
+  const panX = (cRect.width  - visualWidth)  / 2;
+  const panY = (cRect.height - visualHeight) / 2;
 
   state.svgZoom = fitScale;
-  state.svgPan  = { x: targetPanX, y: targetPanY };
+  state.svgPan  = { x: panX, y: panY };
   updateSVGTransform();
 }
 
@@ -110,7 +128,7 @@ export function updateSVGTransform() {
   const layer = document.getElementById('svgLayer');
   const svg   = layer?.querySelector('svg');
   if (svg) {
-    svg.style.transformOrigin = 'center center';
+    svg.style.transformOrigin = '0 0';
     svg.style.transform = `translate(${state.svgPan.x}px, ${state.svgPan.y}px) scale(${state.svgZoom})`;
   }
 }
@@ -121,40 +139,39 @@ function renderSVG(result) {
   const [minX, minY, maxX, maxY] = bounding_box;
   const w = maxX - minX;
   const h = maxY - minY;
-  const unit = state.modelData?.unit || 'mm';
+  const padding = 8; // extra padding for better visibility of edges
 
-  const padding = 5; // Increased padding for better visibility of edge lines
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
+  // Use viewBox only; let CSS handle sizing (width/height 100%)
+  let svg = `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" style="background: #f8fafc; border-radius: 4px;">`;
 
-  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
-
-  // Seam lines — solid, no dash
+  // Seam lines (light gray, thinner)
   svg += `<g id="flat_seams">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.SEAM_CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="0.8"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
-  // Fold lines — solid blue
+  // Fold lines (blue, thicker)
   svg += `<g id="fold_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.FOLD) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="1.2"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
-  // Cut lines — solid red
+  // Cut lines (red, thickest)
   svg += `<g id="cut_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.CUT) return;
     const [x1, y1] = verts2d[edge[0]];
     const [x2, y2] = verts2d[edge[1]];
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="1.2"/>`;
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="2" stroke-linecap="round"/>`;
   });
   svg += `</g>`;
 
