@@ -45,7 +45,7 @@ export function updateRemainingUnfolds(remaining) {
   if (unfoldBtn) unfoldBtn.disabled = remaining === 0;
 }
 
-// ─── Display SVG ──────────────────────────────────────────────────────────
+// ─── Display SVG with centering & non‑scaling strokes ─────────────────────
 export function displaySVG(result) {
   const svg = renderPreviewSVG(result);
   state.svgString = svg;
@@ -55,7 +55,7 @@ export function displaySVG(result) {
 
   const svgElem = svgLayer.querySelector('svg');
   if (svgElem) {
-    // Instead of 100%, we set it to the intrinsic size from viewBox
+    // Use viewBox dimensions for sizing (prevents clipping)
     const viewBox = svgElem.getAttribute('viewBox');
     if (viewBox) {
       const parts = viewBox.trim().split(/\s+/);
@@ -67,6 +67,8 @@ export function displaySVG(result) {
       }
     }
     svgElem.style.display = 'block';
+    // Ensure strokes are always readable (backup: CSS already handles this)
+    svgElem.style.vectorEffect = 'non-scaling-stroke';
   }
 
   const empty2d = document.getElementById('empty2d');
@@ -75,68 +77,40 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait for layout to settle (two frames)
+  // Wait for layout to settle, then center
   requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
 }
 
-// ─── Center SVG to fit container with 10% padding ────────────────────────
+// ─── Center SVG to fit container with 10% padding (clean math) ────────────
 export function centerSVG() {
   const svgLayer  = document.getElementById('svgLayer');
   const svgElem   = svgLayer?.querySelector('svg');
   const container = document.getElementById('svgViewer');
   if (!svgElem || !container) return;
 
-  // Reset transform to measure natural size
+  // Reset any existing transform to get natural dimensions
   svgElem.style.transform = '';
 
-  // Get container dimensions
   const cRect = container.getBoundingClientRect();
   if (cRect.width === 0 || cRect.height === 0) return;
 
-  // Get SVG intrinsic dimensions from viewBox (most reliable)
-  let svgWidth, svgHeight;
   const viewBox = svgElem.getAttribute('viewBox');
-  if (viewBox) {
-    const parts = viewBox.trim().split(/\s+/);
-    if (parts.length === 4) {
-      svgWidth  = parseFloat(parts[2]);
-      svgHeight = parseFloat(parts[3]);
-    }
-  }
-  
-  // Fallback to getBoundingClientRect if viewBox is somehow invalid
-  if (!svgWidth || !svgHeight) {
-    const sRect = svgElem.getBoundingClientRect();
-    svgWidth  = sRect.width;
-    svgHeight = sRect.height;
-  }
-  
+  if (!viewBox) return;
+  const [minX, minY, svgWidth, svgHeight] = viewBox.trim().split(/\s+/).map(Number);
   if (svgWidth === 0 || svgHeight === 0) return;
 
-  // Compute scale to fit with 10% padding
+  // Fit with 10% padding, limit max zoom to 10x
   const scaleX = (cRect.width  * 0.9) / svgWidth;
   const scaleY = (cRect.height * 0.9) / svgHeight;
-  let fitScale = Math.min(scaleX, scaleY);
-  
-  // Limit zoom range
-  fitScale = Math.max(0.01, Math.min(fitScale, 10));
+  let scale = Math.min(scaleX, scaleY, 10);
 
-  // The viewBox is [minX minY width height].
-  // The center of the content in SVG local coordinates is [minX + width/2, minY + height/2].
-  // When scaling from (0,0), the top-left corner of the SVG content is at (minX * fitScale, minY * fitScale).
-  // To center it in the container:
-  // panX + minX * fitScale = (cRect.width - visualWidth) / 2
-  // panX = (cRect.width - visualWidth) / 2 - (minX * fitScale)
+  // Center the scaled content
+  const visualWidth  = svgWidth  * scale;
+  const visualHeight = svgHeight * scale;
+  const panX = (cRect.width  - visualWidth)  / 2 - (minX * scale);
+  const panY = (cRect.height - visualHeight) / 2 - (minY * scale);
 
-  const [minX, minY] = viewBox.trim().split(/\s+/).slice(0, 2).map(Number);
-  
-  const visualWidth  = svgWidth  * fitScale;
-  const visualHeight = svgHeight * fitScale;
-  
-  const panX = (cRect.width - visualWidth) / 2 - (minX * fitScale);
-  const panY = (cRect.height - visualHeight) / 2 - (minY * fitScale);
-
-  state.svgZoom = fitScale;
+  state.svgZoom = scale;
   state.svgPan  = { x: panX, y: panY };
   updateSVGTransform();
 }
@@ -151,7 +125,7 @@ export function updateSVGTransform() {
   }
 }
 
-// ─── Render Preview SVG (Web/CSS based) ───────────────────────────────────
+// ─── Render Preview SVG (web / screen) ────────────────────────────────────
 export function renderPreviewSVG(result) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
@@ -171,15 +145,15 @@ export function renderPreviewSVG(result) {
     });
   };
 
-   addLines('#ff0000', 2, EdgeType.SEAM_CUT);
-   addLines('#2563eb', 2, EdgeType.FOLD);
-   addLines('#dc2626', 2, EdgeType.CUT);
+  addLines('#ff0000', 2, EdgeType.SEAM_CUT);
+  addLines('#2563eb', 2, EdgeType.FOLD);
+  addLines('#dc2626', 2, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
 }
 
-// ─── Render Download SVG (CNC/mm based) ───────────────────────────────────
+// ─── Render Download SVG (CNC / mm based) ─────────────────────────────────
 export function renderDownloadSVG(result) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
@@ -187,12 +161,8 @@ export function renderDownloadSVG(result) {
   const h = maxY - minY;
   const padding = 2;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
+  const scale = 10; // 1 internal mm → 10 mm in file (so that 1 unit = 1 cm)
 
-  // The scale factor to convert internal mm to the "user cm" (1 unit = 10mm)
-  const scale = 10;
-
-  // We create the SVG with dimensions ALREADY multiplied by 10.
-  // This handles the "cm lie": 10mm (internal) -> 100mm (file)
   let svg = `<svg width="${(w + padding * 2) * scale}mm" height="${(h + padding * 2) * scale}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
   const addLines = (stroke, strokeWidth, type) => {
@@ -200,17 +170,13 @@ export function renderDownloadSVG(result) {
       if (edge_types[i] !== type) return;
       const [x1, y1] = verts2d[edge[0]];
       const [x2, y2] = verts2d[edge[1]];
-      
-      // We multiply the stroke-width by the scale so it remains visually 
-      // consistent in the 10x larger coordinate system.
-      const finalStrokeWidth = strokeWidth;
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
     });
   };
 
-   addLines('#ff0000', 2, EdgeType.SEAM_CUT);
-   addLines('#2563eb', 2, EdgeType.FOLD);
-   addLines('#dc2626', 2, EdgeType.CUT);
+  addLines('#ff0000', 2, EdgeType.SEAM_CUT);
+  addLines('#2563eb', 2, EdgeType.FOLD);
+  addLines('#dc2626', 2, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
