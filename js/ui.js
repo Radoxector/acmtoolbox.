@@ -53,19 +53,12 @@ export function displaySVG(result) {
 
   const svgElem = svgLayer.querySelector('svg');
   if (svgElem) {
-    // Use viewBox dimensions for sizing (prevents clipping)
-    const viewBox = svgElem.getAttribute('viewBox');
-    if (viewBox) {
-      const parts = viewBox.trim().split(/\s+/);
-      if (parts.length === 4) {
-        const w = parseFloat(parts[2]);
-        const h = parseFloat(parts[3]);
-        svgElem.style.width = `${w}px`;
-        svgElem.style.height = `${h}px`;
-      }
-    }
+    // Do NOT set explicit width/height — let the viewBox determine natural size (1 unit = 1 pixel)
     svgElem.style.display = 'block';
-    // Ensure strokes are always readable (backup for older browsers)
+    // Override any CSS max-width/height that could constrain the SVG
+    svgElem.style.maxWidth = 'none';
+    svgElem.style.maxHeight = 'none';
+    // Keep strokes readable
     svgElem.style.vectorEffect = 'non-scaling-stroke';
   }
 
@@ -75,36 +68,49 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait for layout to settle, then center
-  requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
+  // Wait for one layout pass, then center
+  requestAnimationFrame(() => centerSVG());
 }
 
-// ─── Center SVG to fit container with 10% padding (clean math) ────────────
+// ─── Center SVG to fit container with 10% padding ─────────────────────────
 export function centerSVG() {
   const svgLayer  = document.getElementById('svgLayer');
   const svgElem   = svgLayer?.querySelector('svg');
   const container = document.getElementById('svgViewer');
   if (!svgElem || !container) return;
 
-  // Reset any existing transform to get natural dimensions
+  // Reset transform to measure natural size
   svgElem.style.transform = '';
 
   const cRect = container.getBoundingClientRect();
   if (cRect.width === 0 || cRect.height === 0) return;
 
-  const viewBox = svgElem.getAttribute('viewBox');
-  if (!viewBox) return;
-  const [minX, minY, svgWidth, svgHeight] = viewBox.trim().split(/\s+/).map(Number);
+  // Get the SVG's natural dimensions (pixels) after reset
+  const sRect = svgElem.getBoundingClientRect();
+  const svgWidth = sRect.width;
+  const svgHeight = sRect.height;
   if (svgWidth === 0 || svgHeight === 0) return;
 
-  // Fit with 10% padding, limit max zoom to 10x
-  const scaleX = (cRect.width  * 0.9) / svgWidth;
+  // Compute scale to fit inside container with 10% padding
+  const scaleX = (cRect.width * 0.9) / svgWidth;
   const scaleY = (cRect.height * 0.9) / svgHeight;
-  let scale = Math.min(scaleX, scaleY, 10);
+  let scale = Math.min(scaleX, scaleY, 10); // limit max zoom
+
+  // Get viewBox minX/minY for accurate panning (content offset)
+  const viewBox = svgElem.getAttribute('viewBox');
+  let minX = 0, minY = 0;
+  if (viewBox) {
+    const parts = viewBox.trim().split(/\s+/);
+    if (parts.length >= 4) {
+      minX = parseFloat(parts[0]);
+      minY = parseFloat(parts[1]);
+    }
+  }
 
   // Center the scaled content
   const visualWidth  = svgWidth  * scale;
   const visualHeight = svgHeight * scale;
+  // Pan to center the content, accounting for the viewBox offset
   const panX = (cRect.width  - visualWidth)  / 2 - (minX * scale);
   const panY = (cRect.height - visualHeight) / 2 - (minY * scale);
 
