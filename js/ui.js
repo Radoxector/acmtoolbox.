@@ -30,32 +30,34 @@ export function updateRemainingUnfolds(remaining) {
   }
 }
 
-export function displaySVG(result) {
-  const svg = renderSVG(result);
-  state.svgString = svg;
-  const svgLayer = document.getElementById('svgLayer');
-  svgLayer.innerHTML = svg;
-  svgLayer.style.display = 'block';
-  document.getElementById('empty2d').style.display = 'none';
-  
-  const svgElem = svgLayer.querySelector('svg');
-  if (svgElem) {
-    const container = svgLayer.parentElement;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    
-    const svgWidth = svgElem.getBBox().width;
-    const svgHeight = svgElem.getBBox().height;
-    
-    const offsetX = (containerWidth - svgWidth) / 2;
-    const offsetY = (containerHeight - svgHeight) / 2;
-    
-    svgElem.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-  }
-  
-  state.svgZoom = 1;
-  state.svgPan = { x: 0, y: 0 };
-}
+ export function displaySVG(result) {
+   const svg = renderSVG(result);
+   state.svgString = svg;
+   const svgLayer = document.getElementById('svgLayer');
+   svgLayer.innerHTML = svg;
+   svgLayer.style.display = 'block';
+   document.getElementById('empty2d').style.display = 'none';
+   
+   const svgElem = svgLayer.querySelector('svg');
+   if (svgElem) {
+     const container = svgLayer.parentElement;
+     const containerWidth = container.clientWidth;
+     const containerHeight = container.clientHeight;
+     
+     const bbox = svgElem.getBBox();
+     const svgWidth = bbox.width;
+     const svgHeight = bbox.height;
+     
+     const offsetX = (containerWidth - svgWidth) / 2;
+     const offsetY = (containerHeight - svgHeight) / 2;
+     
+     svgElem.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+   }
+   
+   state.svgZoom = 1;
+   state.svgPan = { x: 0, y: 0 };
+ }
+
 
 function renderSVG(result) {
   const { verts2d, edges, edge_types, fold_angles, fold_directions, bounding_box } = result;
