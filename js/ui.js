@@ -150,7 +150,7 @@ export function centerSVG() {
 
   // Wait for layout to settle (two frames)
   requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
-}
+
 
 // ─── Center SVG to fit container with 10% padding ────────────────────────
 export function centerSVG() {
@@ -244,9 +244,9 @@ export function renderPreviewSVG(result) {
     });
   };
 
-  addLines('#94a3b8', 0.5, EdgeType.SEAM_CUT);
-  addLines('#2563eb', 1.5, EdgeType.FOLD);
-  addLines('#dc2626', 1.5, EdgeType.CUT);
+   addLines('#ff0000', 2, EdgeType.SEAM_CUT);
+   addLines('#2563eb', 2, EdgeType.FOLD);
+   addLines('#dc2626', 2, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
@@ -276,14 +276,14 @@ export function renderDownloadSVG(result) {
       
       // We multiply the stroke-width by the scale so it remains visually 
       // consistent in the 10x larger coordinate system.
-      const finalStrokeWidth = strokeWidth * 2;
+      const finalStrokeWidth = strokeWidth;
       svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
     });
   };
 
-  addLines('#ff0000', 0.5, EdgeType.SEAM_CUT);
-  addLines('#2563eb', 1, EdgeType.FOLD);
-  addLines('#dc2626', 1, EdgeType.CUT);
+   addLines('#ff0000', 2, EdgeType.SEAM_CUT);
+   addLines('#2563eb', 2, EdgeType.FOLD);
+   addLines('#dc2626', 2, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
