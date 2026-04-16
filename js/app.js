@@ -101,6 +101,24 @@ function loadModel(modelData) {
   state.originalVerts = modelData.vertices;
   state.seamEdgeSet = new Set(modelData.seam_edges || []);
 
+  // Update dimension inputs with actual model dimensions
+  const bb = new THREE.Box3().setFromBufferGeometry(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(state.originalVerts.flat()), 3)));
+  const size = bb.getSize(new THREE.Vector3());
+
+  const dimX = document.getElementById('dimX');
+  const dimY = document.getElementById('dimY');
+  const dimZ = document.getElementById('dimZ');
+  const dimXd = document.getElementById('dimXd');
+  const dimYd = document.getElementById('dimYd');
+  const dimZd = document.getElementById('dimZd');
+
+  if (dimX) dimX.value = size.x.toFixed(2);
+  if (dimY) dimY.value = size.y.toFixed(2);
+  if (dimZ) dimZ.value = size.z.toFixed(2);
+  if (dimXd) dimXd.value = size.x.toFixed(2);
+  if (dimYd) dimYd.value = size.y.toFixed(2);
+  if (dimZd) dimZd.value = size.z.toFixed(2);
+
   applyScale();
 
   const fileName = document.getElementById('fileName');
