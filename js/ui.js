@@ -163,7 +163,7 @@ export function renderSVG(result, isDownload = false) {
   };
 
   // Seam lines (light gray)
-  addLines(edges, '#fe0000', isDownload ? 0.5 : 1.2, EdgeType.SEAM_CUT);
+  addLines(edges, '#ff0000', isDownload ? 0.5 : 1.2, EdgeType.SEAM_CUT);
   // Fold lines (blue)
   addLines(edges, '#2563eb', isDownload ? 1 : 2, EdgeType.FOLD);
   // Cut lines (red)
