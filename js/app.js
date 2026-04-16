@@ -229,8 +229,8 @@ function downloadSVG() {
   ui.showToast('SVG downloaded', 'success');
 }
 
-
 // ─── Build library card ───────────────────────────────────────────────────
+
 function buildLibraryCard(modelInfo, container) {
   const card = document.createElement('div');
   card.className = 'library-slot';
