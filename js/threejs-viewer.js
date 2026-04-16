@@ -384,7 +384,7 @@ export function updateOrbitCamera() {
   const fwd   = new THREE.Vector3(-x, -y, -z).normalize();
   const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
   const up    = new THREE.Vector3().crossVectors(right, fwd).normalize();
-  const target = right.multiplyScalar(panX).add(up.multiplyScalar(panY));
+  const target = right.multiplyScalar(panX).add(up.multiplyScalar(panY)).add(state.mesh.position);
 
   state.camera.position.set(x + target.x, y + target.y, z + target.z);
   state.camera.lookAt(target);
