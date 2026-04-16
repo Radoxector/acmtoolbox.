@@ -171,17 +171,8 @@ function applyScale() {
 function downloadSVG() {
   if (!state.svgString) return;
   
-  // Create a copy of the SVG string to manipulate
-  let svgToDownload = state.svgString;
-  
-  // Replace all occurrences of "mm" with "mm" but scale the numbers? 
-  // No, it's better to just manipulate the SVG string by scaling its contents.
-  // Actually, the easiest way is to recreate the SVG with scaled dimensions.
-  // But we don't have the original result here.
-  
-  // Let's try to parse the current SVG and scale it.
   const parser = new DOMParser();
-  const doc = parser.parseFromString(svgToDownload, 'image/svg+xml');
+  const doc = parser.parseFromString(state.svgString, 'image/svg+xml');
   const svgElem = doc.querySelector('svg');
   
   if (svgElem) {
@@ -189,12 +180,11 @@ function downloadSVG() {
     const oldWidth = svgElem.getAttribute('width');
     const oldHeight = svgElem.getAttribute('height');
     
-    // We need to strip the 'mm' part to multiply
-    const wNum = parseFloat(oldWidth);
-    const hNum = parseFloat(oldHeight);
+    const wNum = parseFloat(oldWidth) * 10;
+    const hNum = parseFloat(oldHeight) * 10;
     
-    svgElem.setAttribute('width', (wNum * 10) + 'mm');
-    svgElem.setAttribute('height', (hNum * 10) + 'mm');
+    svgElem.setAttribute('width', wNum + 'mm');
+    svgElem.setAttribute('height', hNum + 'mm');
     
     // 2. Update viewBox to scale the internal coordinates
     const oldViewBox = svgElem.getAttribute('viewBox');
@@ -206,11 +196,17 @@ function downloadSVG() {
       }
     }
 
-    // 3. Scale all elements inside the SVG
-    // The easiest way is to wrap everything in a <g> and scale it, 
-    // but since we also scaled the viewBox, we don't need to scale elements, 
-    // just the viewBox and width/height.
-    
+    // 3. Scale stroke widths so they look the same in the new coordinate system
+    // Since we scaled the viewBox by 10, a stroke-width of 1 now looks 10x thicker.
+    // To maintain visual consistency, we must divide by 10.
+    const elementsToScale = doc.querySelectorAll('line');
+    elementsToScale.forEach(line => {
+      const sw = line.getAttribute('stroke-width');
+      if (sw) {
+        line.setAttribute('stroke-width', parseFloat(sw) / 10);
+      }
+    });
+
     const serialized = new XMLSerializer().serializeToString(doc);
     const blob = new Blob([serialized], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -223,6 +219,7 @@ function downloadSVG() {
 }
 
 // ─── Build library card ───────────────────────────────────────────────────
+
 function buildLibraryCard(modelInfo, container) {
   const card = document.createElement('div');
   card.className = 'library-slot';
