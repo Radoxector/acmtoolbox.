@@ -9,7 +9,7 @@ const _iner = { yawV: 0, pitchV: 0, panXV: 0, panYV: 0, damping: 0.87, active: f
 let _grid = null;
 let _axes = null;
 let _ground = null;
-let _controlsReady = false; 
+let _controlsReady = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  INIT
@@ -34,13 +34,23 @@ export function init3D() {
   const w = canvas.offsetWidth || 800;
   const h = canvas.offsetHeight || 600;
   state.camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 20000);
-  state.camera.position.set(150, 120, 150);
-  state.camera.lookAt(0, 0, 0);
-  state.initialCameraPos = { x: 150, y: 150, z: 150 };
+
+  // Orbit controls state (always orbits around origin)
+  state.orbitControls = {
+    distance: 150,
+    yaw: -Math.PI / 4,
+    pitch: Math.PI / 6,
+    panX: 0,
+    panY: 0,
+    isAutoRotating: false,
+  };
+
+  // Initial camera position (will be updated via updateOrbitCamera)
+  updateOrbitCamera();
 
   _setupLighting();
 
-  // Grid
+  // Grid and axes
   _axes = new THREE.AxesHelper(20);
   _axes.visible = state.showAxes ?? true;
   state.scene.add(_axes);
@@ -97,7 +107,7 @@ function _animate() {
         Math.abs(_iner.panXV) > EPS || Math.abs(_iner.panYV) > EPS) {
       state.orbitControls.yaw   += _iner.yawV;
       state.orbitControls.pitch += _iner.pitchV;
-      state.orbitControls.pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
+      state.orbitControls.pitch  = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
       state.orbitControls.panX  += _iner.panXV;
       state.orbitControls.panY  += _iner.panYV;
       _iner.yawV   *= _iner.damping;
@@ -131,16 +141,18 @@ function _buildWireframeGeo(faces, vertices) {
 }
 
 export function buildModel3D(vertices, faces) {
+  // Dispose previous objects
   [state.mesh, state.meshWireframe, state.bbPoints].forEach(obj => {
     if (obj) {
-      obj.geometry?.dispose();
+      if (obj.geometry) obj.geometry.dispose();
       if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-      else obj.material?.dispose();
-      state.scene.remove(obj);
+      else if (obj.material) obj.material.dispose();
+      if (state.scene) state.scene.remove(obj);
     }
   });
   state.bbPoints = null;
 
+  // Build geometry
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices.flat()), 3));
   const idx = [];
@@ -159,30 +171,26 @@ export function buildModel3D(vertices, faces) {
 
   state.mesh = new THREE.Mesh(geo, state.meshMaterial);
   state.mesh.castShadow = state.mesh.receiveShadow = false;
+
+  // Center the model at (0,0,0)
+  const box = new THREE.Box3().setFromObject(state.mesh);
+  const center = box.getCenter(new THREE.Vector3());
+  state.mesh.position.set(-center.x, -center.y, -center.z);
   state.scene.add(state.mesh);
 
+  // Wireframe
   state.meshWireframe = new THREE.LineSegments(
     _buildWireframeGeo(faces, vertices),
     new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, fog: false })
   );
+  state.meshWireframe.position.copy(state.mesh.position);
   state.meshWireframe.visible = true;
   state.scene.add(state.meshWireframe);
 
-  const box = new THREE.Box3().setFromObject(state.mesh);
-  const center = box.getCenter(new THREE.Vector3());
-  
-  // Center the model at (0,0,0)
-  state.mesh.position.x = -center.x;
-  state.mesh.position.y = -center.y;
-  state.mesh.position.z = -center.z;
-
-  // Update the wireframe to match the new mesh position
-  state.meshWireframe.position.copy(state.mesh.position);
-
-  // 4. Re-calculate the bounding box based on the new position for BB points and Camera
+  // Re‑compute bounding box after centering
   const newBox = new THREE.Box3().setFromObject(state.mesh);
-  
-  // Bounding Box Points (local to the new position)
+
+  // Bounding box points (optional, used for UI)
   const bbGeo = new THREE.BufferGeometry();
   const bbPos = [];
   const min = newBox.min;
@@ -194,30 +202,23 @@ export function buildModel3D(vertices, faces) {
   corners.forEach(c => bbPos.push(c[0], c[1], c[2]));
   bbGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bbPos), 3));
   state.bbPoints = new THREE.Points(bbGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 2 }));
-  state.bbPoints.visible = false; // hidden — used only for bounding calculations
+  state.bbPoints.visible = false;
   state.scene.add(state.bbPoints);
 
   _alignEnvironment(newBox);
-  fitCameraToBox(newBox);
+  resetView();
 }
-
 
 function _alignEnvironment(box) {
   const bottomY = box.min.y;
-
-  if (_grid) {
-    _grid.position.y = bottomY;
-  }
-  if (_ground) {
-    _ground.position.y = bottomY;
-  }
+  if (_grid) _grid.position.y = bottomY;
+  if (_ground) _ground.position.y = bottomY;
   _updateShadows(box);
 }
 
 function _updateShadows(box) {
   if (!state.shadowLight) return;
   const size = box.getSize(new THREE.Vector3());
-  
   const pad = Math.max(size.x, size.y, size.z) * 2;
   state.shadowLight.position.set(0, pad, 0);
 
@@ -233,24 +234,55 @@ function _updateShadows(box) {
   }
 }
 
-export function fitCameraToBox(box) {
-  const size   = box.getSize(new THREE.Vector3());
+// ── Public camera control ─────────────────────────────────────────────────────
+export function updateOrbitCamera() {
+  const { distance, yaw, pitch, panX = 0, panY = 0 } = state.orbitControls;
+
+  // Direction from target to camera (spherical)
+  const x = distance * Math.sin(yaw) * Math.cos(pitch);
+  const y = distance * Math.sin(pitch);
+  const z = distance * Math.cos(yaw) * Math.cos(pitch);
+
+  const target = new THREE.Vector3(0, 0, 0);
+  let pos = new THREE.Vector3(x, y, z);
+
+  // Apply panning: move camera perpendicular to view direction
+  const forward = pos.clone().normalize();
+  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+  const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+  pos = pos.clone().add(right.clone().multiplyScalar(panX)).add(up.clone().multiplyScalar(panY));
+
+  state.camera.position.copy(target.clone().add(pos));
+  state.camera.lookAt(target);
+}
+
+export function resetView() {
+  if (!state.mesh) return;
+  const box = new THREE.Box3().setFromObject(state.mesh);
+  const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
-  
   const fovRad = (state.camera.fov * Math.PI) / 180;
-  const dist = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
-  
-  state.orbitControls.distance = dist;
+  const distance = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
+
+  state.orbitControls.distance = Math.max(1, distance);
+  state.orbitControls.yaw = -Math.PI / 4;    // 45° around Y
+  state.orbitControls.pitch = Math.PI / 6;   // 30° elevation
   state.orbitControls.panX = 0;
   state.orbitControls.panY = 0;
   updateOrbitCamera();
 }
 
+// Kept for compatibility
+export function fitCameraToBox(box) {
+  resetView();
+}
+
+// ── Input handling (orbit/pan) ────────────────────────────────────────────────
 function _setupOrbitControls() {
   if (_controlsReady) return;
   _controlsReady = true;
 
-  const canvas  = document.getElementById('canvas3d');
+  const canvas = document.getElementById('canvas3d');
   const ROT_SPD = 0.008;
   const PAN_SPD = 0.4;
 
@@ -260,8 +292,8 @@ function _setupOrbitControls() {
   canvas.addEventListener('mousedown', e => {
     state.orbitControls.isAutoRotating = false;
     _iner.active = false;
-    if (e.button === 1 || e.button === 2) panning  = true;
-    else                                   dragging = true;
+    if (e.button === 1 || e.button === 2) panning = true;
+    else dragging = true;
     prev = { x: e.clientX, y: e.clientY };
   });
 
@@ -272,14 +304,16 @@ function _setupOrbitControls() {
 
     if (dragging) {
       const s = (300 / state.orbitControls.distance) * ROT_SPD;
-      _iner.yawV = dx * s;  _iner.pitchV = dy * s;
-      state.orbitControls.yaw   += _iner.yawV;
+      _iner.yawV = dx * s;
+      _iner.pitchV = dy * s;
+      state.orbitControls.yaw += _iner.yawV;
       state.orbitControls.pitch += _iner.pitchV;
-      state.orbitControls.pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
+      state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
     }
     if (panning) {
       const s = (state.orbitControls.distance / 500) * PAN_SPD;
-      _iner.panXV = -dx * s;  _iner.panYV = dy * s;
+      _iner.panXV = -dx * s;
+      _iner.panYV = dy * s;
       state.orbitControls.panX += _iner.panXV;
       state.orbitControls.panY += _iner.panYV;
     }
@@ -287,14 +321,14 @@ function _setupOrbitControls() {
     prev = { x: e.clientX, y: e.clientY };
   });
 
-   canvas.addEventListener('mouseup', (e) => {
-     if (dragging || panning) _iner.active = true;
-     dragging = panning = false;
-   });
-   canvas.addEventListener('mouseleave', (e) => { 
-     if (dragging || panning) _iner.active = true;
-     dragging = panning = false; 
-   });
+  canvas.addEventListener('mouseup', () => {
+    if (dragging || panning) _iner.active = true;
+    dragging = panning = false;
+  });
+  canvas.addEventListener('mouseleave', () => {
+    if (dragging || panning) _iner.active = true;
+    dragging = panning = false;
+  });
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
@@ -311,7 +345,8 @@ function _setupOrbitControls() {
     e.preventDefault();
     state.orbitControls.isAutoRotating = false;
     _iner.active = false;
-    lastT = [...e.touches]; lastPinch = null;
+    lastT = [...e.touches];
+    lastPinch = null;
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
@@ -320,10 +355,10 @@ function _setupOrbitControls() {
     if (t.length === 1 && lastT.length >= 1) {
       const dx = t[0].clientX - lastT[0].clientX;
       const dy = t[0].clientY - lastT[0].clientY;
-      const s  = (300 / state.orbitControls.distance) * ROT_SPD;
-      state.orbitControls.yaw   += dx * s;
+      const s = (300 / state.orbitControls.distance) * ROT_SPD;
+      state.orbitControls.yaw += dx * s;
       state.orbitControls.pitch += dy * s;
-      state.orbitControls.pitch  = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.orbitControls.pitch));
+      state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
     } else if (t.length === 2 && lastT.length >= 2) {
       const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[0].clientX)) / 2;
       const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[1].clientY)) / 2;
@@ -340,29 +375,11 @@ function _setupOrbitControls() {
     lastT = t;
   }, { passive: false });
 
-  canvas.addEventListener('touchend', e => {
+  canvas.addEventListener('touchend', () => {
     if (lastT.length > 0) _iner.active = true;
-    lastT = []; lastPinch = null;
+    lastT = [];
+    lastPinch = null;
   }, { passive: false });
-}
-
-export function updateOrbitCamera() {
-  const { distance, yaw, pitch, panX = 0, panY = 0 } = state.orbitControls;
-  const x = distance * Math.sin(yaw)  * Math.cos(pitch);
-  const y = distance * Math.sin(pitch);
-  const z = distance * Math.cos(yaw)  * Math.cos(pitch);
-
-  const fwd   = new THREE.Vector3(-x, -y, -z).normalize();
-  const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
-  const up    = new THREE.Vector3().crossVectors(right, fwd).normalize();
-  
-  // The target is the center of the mesh plus the panning offset
-  const target = state.mesh.position.clone()
-    .add(right.clone().multiplyScalar(panX))
-    .add(up.clone().multiplyScalar(panY));
-
-  state.camera.position.set(target.x + x, target.y + y, target.z + z);
-  state.camera.lookAt(target);
 }
 
 // Toggle helpers
