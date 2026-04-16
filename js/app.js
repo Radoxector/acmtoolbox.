@@ -5,17 +5,6 @@ import * as api from './api.js';
 import * as viewer from './threejs-viewer.js';
 import * as ui from './ui.js';
 
-// ─── Auth helpers (assumed from your project) ────────────────────────────
-function isAuthenticated() { return !!localStorage.getItem('access_token'); }
-function isTokenExpired() { return false; } // implement your own check
-function clearToken() { localStorage.removeItem('access_token'); }
-function redirectToLogin() { window.location.href = '/login.html'; }
-function getUsername() { return localStorage.getItem('username'); }
-function getRemainingUnfolds() { return parseInt(localStorage.getItem('remaining_unfolds') || '0'); }
-function storeRemainingUnfolds(remaining) { localStorage.setItem('remaining_unfolds', remaining); }
-async function fetchRemainingUnfolds() { /* your API call */ return null; }
-function logoutUser() { clearToken(); redirectToLogin(); }
-
 // ─── Sync dual dim inputs (desktop + mobile) ──────────────────────────────
 function getDim(axis) {
   const desktop = document.getElementById(`dim${axis}d`);
@@ -37,9 +26,9 @@ async function handleUnfold() {
     return;
   }
 
-  const x = getDim('X') * 10;
-  const y = getDim('Y') * 10;
-  const z = getDim('Z') * 10;
+  const x = getDim('X');
+  const y = getDim('Y');
+  const z = getDim('Z');
 
   const origBB = {
     minX: Math.min(...state.originalVerts.map(v => v[0])),
@@ -80,6 +69,7 @@ async function handleUnfold() {
     document.getElementById('downloadBtn').disabled = false;
     ui.updateStatus(response);
 
+    // Switch to 2D panel after successful unfold
     if (typeof switchTab === 'function') switchTab('2d');
 
     if (response.remaining_unfolds !== undefined) {
@@ -111,7 +101,8 @@ function loadModel(modelData) {
   state.originalVerts = modelData.vertices;
   state.seamEdgeSet = new Set(modelData.seam_edges || []);
 
-  const dims = { x: 10, y: 10, z: 10 };
+  // Default dimensions as requested
+  const dims = { x: 100, y: 100, z: 100 };
   
   const updateInput = (id, val) => {
     const el = document.getElementById(id);
@@ -135,6 +126,7 @@ function loadModel(modelData) {
   document.getElementById('stV').textContent = modelData.vertices.length;
   document.getElementById('stF').textContent = modelData.faces.length;
 
+  // Auto-switch to 3D on model load
   if (typeof switchTab === 'function') switchTab('3d');
 
   console.log(`[MODEL] Loaded: ${modelData.name} (V:${modelData.vertices.length} F:${modelData.faces.length})`);
@@ -143,9 +135,9 @@ function loadModel(modelData) {
 
 // ─── Apply scale ──────────────────────────────────────────────────────────
 function applyScale() {
-  const x = getDim('X') * 10;
-  const y = getDim('Y') * 10;
-  const z = getDim('Z') * 10;
+  const x = getDim('X');
+  const y = getDim('Y');
+  const z = getDim('Z');
 
   const origBB = {
     minX: Math.min(...state.originalVerts.map(v => v[0])),
@@ -175,62 +167,19 @@ function applyScale() {
   document.getElementById('downloadBtn').disabled = true;
 }
 
-// ─── Download SVG with "cm lie" correction ───────────────────────────────
+// ─── Download SVG ─────────────────────────────────────────────────────────
 function downloadSVG() {
-  if (!state.unfoldResult) {
-    ui.showToast('No unfolded template to download', 'warning');
-    return;
-  }
-
-  // Generate the correct download SVG using the result and isDownload=true
-  // This uses mm units and scales dimensions by 10 to correct the "cm lie"
-  const svgString = ui.renderSVGForDownload(state.unfoldResult);
-
-  // Correcting the viewBox and dimensions by multiplying by 10 to convert mm to cm scale
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(svgString, 'image/svg+xml');
-  const svgElem = doc.querySelector('svg');
-  if (!svgElem) {
-    ui.showToast('Invalid SVG data', 'error');
-    return;
-  }
-
-  // 1. Scale width and height (multiply by 10 to convert mm to cm-scale mm)
-  const oldWidth = svgElem.getAttribute('width');
-  const oldHeight = svgElem.getAttribute('height');
-  if (oldWidth && oldHeight) {
-    const wNum = parseFloat(oldWidth) * 10;
-    const hNum = parseFloat(oldHeight) * 10;
-    svgElem.setAttribute('width', wNum + 'mm');
-    svgElem.setAttribute('height', hNum + 'mm');
-  }
-
-  // 2. Scale viewBox (multiply all 4 components by 10)
-  const oldViewBox = svgElem.getAttribute('viewBox');
-  if (oldViewBox) {
-    const parts = oldViewBox.trim().split(/\s+/).map(parseFloat);
-    if (parts.length === 4) {
-      const vb = parts.map(p => p * 10);
-      svgElem.setAttribute('viewBox', vb.join(' '));
-    }
-  }
-
-  // 3. Stroke widths are already multiplied by 10 in renderSVG (isDownload=true),
-  //    so we don't modify them further here.
-
-  const serialized = new XMLSerializer().serializeToString(doc);
-  const blob = new Blob([serialized], { type: 'image/svg+xml' });
+  if (!state.svgString) return;
+  const blob = new Blob([state.svgString], { type: 'image/svg+xml' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `${state.modelData?.name || 'unfold'}.svg`;
   a.click();
   URL.revokeObjectURL(url);
-  ui.showToast('SVG downloaded', 'success');
 }
 
 // ─── Build library card ───────────────────────────────────────────────────
-
 function buildLibraryCard(modelInfo, container) {
   const card = document.createElement('div');
   card.className = 'library-slot';
@@ -322,9 +271,9 @@ async function initApp() {
     });
 
     document.getElementById('unfoldBtn').addEventListener('click', handleUnfold);
-    document.getElementById('downloadBtn').addEventListener('click', downloadSVG);  // <-- corrected download function
+    document.getElementById('downloadBtn').addEventListener('click', downloadSVG);
 
-    // Dim inputs
+    // Dim inputs — desktop + mobile
     ['dimX', 'dimXd', 'dimY', 'dimYd', 'dimZ', 'dimZd'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -356,14 +305,14 @@ async function initApp() {
 
     // 3D toolbar
     document.getElementById('resetCameraBtn').addEventListener('click', () => {
+      state.orbitControls.yaw = 0;
+      state.orbitControls.pitch = 0.5;
       if (state.mesh) {
         const box = new THREE.Box3().setFromObject(state.mesh);
         viewer.fitCameraToBox(box);
       } else {
-        if (state.orbitControls) {
-          state.orbitControls.distance = 300;
-          viewer.updateOrbitCamera();
-        }
+        state.orbitControls.distance = 300;
+        viewer.updateOrbitCamera();
       }
     });
 
@@ -404,7 +353,7 @@ async function initApp() {
       ui.centerSVG();
     });
 
-    // SVG pan mouse
+    // SVG pan — mouse
     let isPanning = false;
     const svgViewer = document.getElementById('svgViewer');
     svgViewer.addEventListener('mousedown', () => { isPanning = true; });
@@ -416,7 +365,7 @@ async function initApp() {
     });
     document.addEventListener('mouseup', () => { isPanning = false; });
 
-    // SVG pan touch
+    // SVG pan — touch
     let lastTouch = null;
     svgViewer.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -447,5 +396,4 @@ async function initApp() {
   }
 }
 
-// Start the app
 initApp();
