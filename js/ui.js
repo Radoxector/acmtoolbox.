@@ -112,12 +112,20 @@ export function centerSVG() {
   // Limit zoom range
   fitScale = Math.max(0.01, Math.min(fitScale, 10));
 
-  // Compute center offset
+  // The viewBox is [minX minY width height].
+  // The center of the content in SVG local coordinates is [minX + width/2, minY + height/2].
+  // When scaling from (0,0), the top-left corner of the SVG content is at (minX * fitScale, minY * fitScale).
+  // To center it in the container:
+  // panX + minX * fitScale = (cRect.width - visualWidth) / 2
+  // panX = (cRect.width - visualWidth) / 2 - (minX * fitScale)
+
+  const [minX, minY] = viewBox.trim().split(/\s+/).slice(0, 2).map(Number);
+  
   const visualWidth  = svgWidth  * fitScale;
   const visualHeight = svgHeight * fitScale;
   
-  const panX = (cRect.width - visualWidth) / 2;
-  const panY = (cRect.height - visualHeight) / 2;
+  const panX = (cRect.width - visualWidth) / 2 - (minX * fitScale);
+  const panY = (cRect.height - visualHeight) / 2 - (minY * fitScale);
 
   state.svgZoom = fitScale;
   state.svgPan  = { x: panX, y: panY };
@@ -154,9 +162,9 @@ export function renderPreviewSVG(result) {
     });
   };
 
-  addLines('#94a3b8', 1.2, EdgeType.SEAM_CUT);
-  addLines('#2563eb', 2, EdgeType.FOLD);
-  addLines('#dc2626', 2, EdgeType.CUT);
+  addLines('#94a3b8', 0.5, EdgeType.SEAM_CUT);
+  addLines('#2563eb', 1.5, EdgeType.FOLD);
+  addLines('#dc2626', 1.5, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;

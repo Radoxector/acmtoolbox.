@@ -164,8 +164,8 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.15,
-    roughness: 0.7,
+    metalness: 0.2,
+    roughness: 0.1,
     side:      THREE.DoubleSide,
   });
 
