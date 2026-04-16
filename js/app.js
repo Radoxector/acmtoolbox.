@@ -169,53 +169,19 @@ function applyScale() {
 
 // ─── Download SVG ─────────────────────────────────────────────────────────
 function downloadSVG() {
-  if (!state.svgString) return;
+  if (!state.unfoldResult) return;
   
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(state.svgString, 'image/svg+xml');
-  const svgElem = doc.querySelector('svg');
+  // Generate the correct download SVG using the result and isDownload=true
+  // This ensures we use mm and the correct viewBox from the start.
+  const svgString = ui.renderSVGForDownload(state.unfoldResult);
   
-  if (svgElem) {
-    // 1. Update width and height (multiply by 10)
-    const oldWidth = svgElem.getAttribute('width');
-    const oldHeight = svgElem.getAttribute('height');
-    
-    const wNum = parseFloat(oldWidth) * 10;
-    const hNum = parseFloat(oldHeight) * 10;
-    
-    svgElem.setAttribute('width', wNum + 'mm');
-    svgElem.setAttribute('height', hNum + 'mm');
-    
-    // 2. Update viewBox to scale the internal coordinates
-    const oldViewBox = svgElem.getAttribute('viewBox');
-    if (oldViewBox) {
-      const parts = oldViewBox.trim().split(/\s+/);
-      if (parts.length === 4) {
-        const vb = parts.map(p => parseFloat(p) * 10);
-        svgElem.setAttribute('viewBox', vb.join(' '));
-      }
-    }
-
-    // 3. Scale stroke widths so they look the same in the new coordinate system
-    // Since we scaled the viewBox by 10, a stroke-width of 1 now looks 10x thicker.
-    // To maintain visual consistency, we must divide by 10.
-    const elementsToScale = doc.querySelectorAll('line');
-    elementsToScale.forEach(line => {
-      const sw = line.getAttribute('stroke-width');
-      if (sw) {
-        line.setAttribute('stroke-width', parseFloat(sw) / 10);
-      }
-    });
-
-    const serialized = new XMLSerializer().serializeToString(doc);
-    const blob = new Blob([serialized], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${state.modelData?.name || 'unfold'}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const blob = new Blob([svgString], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${state.modelData?.name || 'unfold'}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ─── Build library card ───────────────────────────────────────────────────

@@ -47,7 +47,7 @@ export function updateRemainingUnfolds(remaining) {
 
 // ─── Display SVG ──────────────────────────────────────────────────────────
 export function displaySVG(result) {
-  const svg = renderSVG(result);
+  const svg = renderSVG(result, false); // false = preview mode
   state.svgString = svg;
 
   const svgLayer = document.getElementById('svgLayer');
@@ -66,8 +66,8 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Use a small delay to ensure layout has settled, especially on mobile
-  setTimeout(centerSVG, 150);
+  // Wait for layout to settle (two frames)
+  requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
 }
 
 // ─── Center SVG to fit container with 10% padding ────────────────────────
@@ -135,19 +135,22 @@ export function updateSVGTransform() {
 }
 
 // ─── Render SVG string ────────────────────────────────────────────────────
-function renderSVG(result, isDownload = false) {
+export function renderSVG(result, isDownload = false) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
   const w = maxX - minX;
   const h = maxY - minY;
-  const unit = state.modelData?.unit || 'mm';
 
   const padding = isDownload ? 2 : 8;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
-  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
+  // For preview: no explicit width/height – CSS will size it
+  // For download: use mm units so the file is ready for CNC
+  let svg = isDownload
+    ? `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`
+    : `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
-  // Seam lines
+  // Seam lines (light gray)
   svg += `<g id="flat_seams">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.SEAM_CUT) return;
@@ -158,7 +161,7 @@ function renderSVG(result, isDownload = false) {
   });
   svg += `</g>`;
 
-  // Fold lines
+  // Fold lines (blue)
   svg += `<g id="fold_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.FOLD) return;
@@ -169,7 +172,7 @@ function renderSVG(result, isDownload = false) {
   });
   svg += `</g>`;
 
-  // Cut lines
+  // Cut lines (red)
   svg += `<g id="cut_lines">`;
   edges.forEach((edge, i) => {
     if (edge_types[i] !== EdgeType.CUT) return;
@@ -182,4 +185,9 @@ function renderSVG(result, isDownload = false) {
 
   svg += `</svg>`;
   return svg;
+}
+
+// ─── Helper for download ──────────────────────────────────────────────────
+export function renderSVGForDownload(result) {
+  return renderSVG(result, true);
 }
