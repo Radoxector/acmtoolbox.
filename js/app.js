@@ -172,16 +172,44 @@ function downloadSVG() {
   if (!state.unfoldResult) return;
   
   // Generate the correct download SVG using the result and isDownload=true
-  // This ensures we use mm and the correct viewBox from the start.
+  // This uses mm units and scales dimensions by 10 to correct the "cm lie"
   const svgString = ui.renderSVGForDownload(state.unfoldResult);
   
-  const blob = new Blob([svgString], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${state.modelData?.name || 'unfold'}.svg`;
-  a.click();
-  URL.revokeObjectURL(url);
+  // Correcting the viewBox and dimensions by multiplying by 10 to convert mm to cm scale
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgString, 'image/svg+xml');
+  const svgElem = doc.querySelector('svg');
+  
+  if (svgElem) {
+    // 1. Scale width and height (multiply by 10 to convert mm to cm-scale mm)
+    const wStr = svgElem.getAttribute('width');
+    const hStr = svgElem.getAttribute('height');
+    if (wStr && hStr) {
+      const wNum = parseFloat(wStr) * 10;
+      const hNum = parseFloat(hStr) * 10;
+      svgElem.setAttribute('width', wNum + 'mm');
+      svgElem.setAttribute('height', hNum + 'mm');
+    }
+
+    // 2. Scale viewBox (multiply all 4 components by 10)
+    const vbStr = svgElem.getAttribute('viewBox');
+    if (vbStr) {
+      const parts = vbStr.split(/\s+/).map(parseFloat);
+      if (parts.length === 4) {
+        const scaledParts = parts.map(p => p * 10);
+        svgElem.setAttribute('viewBox', scaledParts.join(' '));
+      }
+    }
+
+    const serialized = new XMLSerializer().serializeToString(doc);
+    const blob = new Blob([serialized], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.modelData?.name || 'unfold'}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ─── Build library card ───────────────────────────────────────────────────

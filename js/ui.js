@@ -134,7 +134,7 @@ export function updateSVGTransform() {
   }
 }
 
-// ─── Render SVG string ────────────────────────────────────────────────────
+// ─── Render SVG string (preview or download) ──────────────────────────────
 export function renderSVG(result, isDownload = false) {
   const { verts2d, edges, edge_types, bounding_box } = result;
   const [minX, minY, maxX, maxY] = bounding_box;
@@ -150,41 +150,32 @@ export function renderSVG(result, isDownload = false) {
     ? `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`
     : `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
+  // Helper to add lines
+  const addLines = (edgeIndices, stroke, strokeWidth, type) => {
+    edges.forEach((edge, i) => {
+      if (edge_types[i] !== type) return;
+      const [x1, y1] = verts2d[edge[0]];
+      const [x2, y2] = verts2d[edge[1]];
+      // If downloading, the scale is multiplied by 10, so we must also multiply stroke-width by 10 to keep it visually same
+      const finalStrokeWidth = isDownload ? strokeWidth * 10 : strokeWidth;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${finalStrokeWidth}" stroke-linecap="round"/>`;
+    });
+  };
+
   // Seam lines (light gray)
-  svg += `<g id="flat_seams">`;
-  edges.forEach((edge, i) => {
-    if (edge_types[i] !== EdgeType.SEAM_CUT) return;
-    const [x1, y1] = verts2d[edge[0]];
-    const [x2, y2] = verts2d[edge[1]];
-    const strokeWidth = isDownload ? 0.5 : 1.2;
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
-  });
-  svg += `</g>`;
-
+  addLines(edges, '#fe0000', isDownload ? 0.5 : 1.2, EdgeType.SEAM_CUT);
   // Fold lines (blue)
-  svg += `<g id="fold_lines">`;
-  edges.forEach((edge, i) => {
-    if (edge_types[i] !== EdgeType.FOLD) return;
-    const [x1, y1] = verts2d[edge[0]];
-    const [x2, y2] = verts2d[edge[1]];
-    const strokeWidth = isDownload ? 1 : 2;
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2563eb" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
-  });
-  svg += `</g>`;
-
+  addLines(edges, '#2563eb', isDownload ? 1 : 2, EdgeType.FOLD);
   // Cut lines (red)
-  svg += `<g id="cut_lines">`;
-  edges.forEach((edge, i) => {
-    if (edge_types[i] !== EdgeType.CUT) return;
-    const [x1, y1] = verts2d[edge[0]];
-    const [x2, y2] = verts2d[edge[1]];
-    const strokeWidth = isDownload ? 1 : 2;
-    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#dc2626" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
-  });
-  svg += `</g>`;
+  addLines(edges, '#dc2626', isDownload ? 1 : 2, EdgeType.CUT);
 
   svg += `</svg>`;
   return svg;
+}
+
+// ─── Helper for download ──────────────────────────────────────────────────
+export function renderSVGForDownload(result) {
+  return renderSVG(result, true);
 }
 
 // ─── Helper for download ──────────────────────────────────────────────────
