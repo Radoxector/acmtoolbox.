@@ -303,7 +303,7 @@ function _setupOrbitControls() {
     const dy = e.clientY - prev.y;
 
     if (dragging) {
-      const s = (300 / state.orbitControls.distance) * ROT_SPD;
+      const s = (600 / state.orbitControls.distance) * ROT_SPD;
       _iner.yawV = dx * s;
       _iner.pitchV = dy * s;
       state.orbitControls.yaw += _iner.yawV;
