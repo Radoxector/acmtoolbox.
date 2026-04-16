@@ -53,7 +53,6 @@ export function displaySVG(result) {
   const svgLayer = document.getElementById('svgLayer');
   svgLayer.innerHTML = svg;
 
-  // Make SVG fill the container (overrides the mm width/height)
   const svgElem = svgLayer.querySelector('svg');
   if (svgElem) {
     svgElem.style.width = '100%';
@@ -67,8 +66,8 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait for layout to settle before centering
-  requestAnimationFrame(() => requestAnimationFrame(() => centerSVG()));
+  // Use a small delay to ensure layout has settled, especially on mobile
+  setTimeout(centerSVG, 150);
 }
 
 // ─── Center SVG to fit container with 10% padding ────────────────────────
@@ -85,7 +84,7 @@ export function centerSVG() {
   const cRect = container.getBoundingClientRect();
   if (cRect.width === 0 || cRect.height === 0) return;
 
-  // Get SVG intrinsic dimensions from viewBox or fallback to getBoundingClientRect
+  // Get SVG intrinsic dimensions from viewBox (most reliable)
   let svgWidth, svgHeight;
   const viewBox = svgElem.getAttribute('viewBox');
   if (viewBox) {
@@ -95,27 +94,29 @@ export function centerSVG() {
       svgHeight = parseFloat(parts[3]);
     }
   }
+  
+  // Fallback to getBoundingClientRect if viewBox is somehow invalid
   if (!svgWidth || !svgHeight) {
     const sRect = svgElem.getBoundingClientRect();
     svgWidth  = sRect.width;
     svgHeight = sRect.height;
   }
+  
   if (svgWidth === 0 || svgHeight === 0) return;
 
   // Compute scale to fit with 10% padding
   const scaleX = (cRect.width  * 0.9) / svgWidth;
   const scaleY = (cRect.height * 0.9) / svgHeight;
   let fitScale = Math.min(scaleX, scaleY);
-  // Limit zoom to 10x maximum (prevents ridiculous enlargement)
-  fitScale = Math.min(fitScale, 10);
-  // Also ensure we don't zoom out below 0.1 (makes lines too thin)
-  fitScale = Math.max(fitScale, 0.1);
+  
+  // Limit zoom range
+  fitScale = Math.max(0.01, Math.min(fitScale, 10));
 
   // Compute center offset
-  // After scaling, the SVG's visual size will be svgWidth * fitScale, svgHeight * fitScale
   const visualWidth  = svgWidth  * fitScale;
   const visualHeight = svgHeight * fitScale;
-  const panX = (cRect.width  - visualWidth)  / 2;
+  
+  const panX = (cRect.width - visualWidth) / 2;
   const panY = (cRect.height - visualHeight) / 2;
 
   state.svgZoom = fitScale;
