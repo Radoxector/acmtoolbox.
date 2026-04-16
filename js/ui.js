@@ -109,8 +109,7 @@ function renderSVG(result) {
   const padding = 2;
   const viewBox = `${minX - padding} ${minY - padding} ${w + padding * 2} ${h + padding * 2}`;
 
-  let svg = `<svg width="${w + padding * 2}${unit}" height="${h + padding * 2}${unit}" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
-  svg += `<rect width="100%" height="100%" fill="white"/>`;
+  let svg = `<svg width="${w + padding * 2}mm" height="${h + padding * 2}mm" viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg">`;
 
   // Seam lines — solid, no dash
   svg += `<g id="flat_seams">`;
