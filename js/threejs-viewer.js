@@ -52,7 +52,7 @@ export function init3D() {
 
   // Grid and axes
   _axes = new THREE.AxesHelper(20);
-  _axes.visible = state.showAxes ?? true;
+  _axes.visible = false;
   state.scene.add(_axes);
 
   window.addEventListener('resize', _onResize);
@@ -164,13 +164,13 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.,
+    metalness: 0.3,
     roughness: 0.1,
     side:      THREE.FrontSide,
   });
 
   const innerMaterial = new THREE.MeshStandardMaterial({
-    color:     0x333333,
+    color:     '#464647',
     metalness: 0.,
     roughness: 0.5,
     side:      THREE.BackSide,
@@ -297,51 +297,41 @@ function _setupOrbitControls() {
 
   const canvas = document.getElementById('canvas3d');
   const ROT_SPD = 0.008;
-  const PAN_SPD = 0.4;
 
-  let dragging = false, panning = false;
+  let dragging = false;
   let prev = { x: 0, y: 0 };
 
   canvas.addEventListener('mousedown', e => {
     state.orbitControls.isAutoRotating = false;
     _iner.active = false;
-    if (e.button === 1 || e.button === 2) panning = true;
-    else dragging = true;
+    if (e.button === 0) dragging = true;
     prev = { x: e.clientX, y: e.clientY };
   });
 
-   canvas.addEventListener('mousemove', e => {
-     if (!dragging && !panning) return;
-     const dx = e.clientX - prev.x;
-     const dy = e.clientY - prev.y;
- 
-     if (dragging) {
-       const s = (300 / state.orbitControls.distance) * ROT_SPD;
-       _iner.yawV = dx * s;
-       _iner.pitchV = dy * s;
-       state.orbitControls.yaw += _iner.yawV;
-       state.orbitControls.pitch += _iner.pitchV;
-       state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
-     }
-     if (panning) {
-       const s = (state.orbitControls.distance / 1000) * PAN_SPD;
-       _iner.panXV = -dx * s;
-       _iner.panYV = dy * s;
-       state.orbitControls.panX += _iner.panXV;
-       state.orbitControls.panY += _iner.panYV;
-     }
-     updateOrbitCamera();
-     prev = { x: e.clientX, y: e.clientY };
-   });
+  canvas.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - prev.x;
+    const dy = e.clientY - prev.y;
 
+    const s = (300 / state.orbitControls.distance) * ROT_SPD;
+    _iner.yawV = dx * s;
+    _iner.pitchV = dy * s;
+    state.orbitControls.yaw += _iner.yawV;
+    state.orbitControls.pitch += _iner.pitchV;
+    state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
+    
+    updateOrbitCamera();
+    prev = { x: e.clientX, y: e.clientY };
+  });
 
   canvas.addEventListener('mouseup', () => {
-    if (dragging || panning) _iner.active = true;
-    dragging = panning = false;
+    if (dragging) _iner.active = true;
+    dragging = false;
   });
+
   canvas.addEventListener('mouseleave', () => {
-    if (dragging || panning) _iner.active = true;
-    dragging = panning = false;
+    if (dragging) _iner.active = true;
+    dragging = false;
   });
 
   canvas.addEventListener('wheel', e => {
@@ -366,29 +356,23 @@ function _setupOrbitControls() {
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     const t = [...e.touches];
-     if (t.length === 1 && lastT.length >= 1) {
-       const dx = t[0].clientX - lastT[0].clientX;
-       const dy = t[0].clientY - lastT[0].clientY;
-       const s = (150 / state.orbitControls.distance) * ROT_SPD;
-       state.orbitControls.yaw += dx * s;
-       state.orbitControls.pitch += dy * s;
-       state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
-     } else if (t.length === 2 && lastT.length >= 2) {
-       const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[0].clientX)) / 2;
-       const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[1].clientY)) / 2;
-       const ps = (state.orbitControls.distance / 1000) * PAN_SPD;
-       state.orbitControls.panX += -avgDx * ps;
-       state.orbitControls.panY += avgDy * ps;
-       const pinch = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-       if (lastPinch !== null) {
-         state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance * (lastPinch / pinch), 10000));
-       }
-       lastPinch = pinch;
-     }
-     updateOrbitCamera();
-     lastT = t;
-   }, { passive: false });
-
+    if (t.length === 1 && lastT.length >= 1) {
+      const dx = t[0].clientX - lastT[0].clientX;
+      const dy = t[0].clientY - lastT[0].clientY;
+      const s = (150 / state.orbitControls.distance) * ROT_SPD;
+      state.orbitControls.yaw += dx * s;
+      state.orbitControls.pitch += dy * s;
+      state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
+    } else if (t.length === 2 && lastT.length >= 2) {
+      const pinch = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+      if (lastPinch !== null) {
+        state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance * (lastPinch / pinch), 10000));
+      }
+      lastPinch = pinch;
+    }
+    updateOrbitCamera();
+    lastT = t;
+  }, { passive: false });
 
   canvas.addEventListener('touchend', () => {
     if (lastT.length > 0) _iner.active = true;

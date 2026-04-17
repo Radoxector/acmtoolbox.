@@ -378,6 +378,53 @@ async function initApp() {
       if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
     });
 
+    // New 3D Navigation Overlay Listeners
+    document.querySelectorAll('.nav-btn-3d').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        if (!state.mesh) return;
+        
+        const box = new THREE.Box3().setFromObject(state.mesh);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // Reset orbit controls to allow nice camera positioning
+        state.orbitControls.panX = 0;
+        state.orbitControls.panY = 0;
+
+        // Calculate distance based on max dimension and FOV
+        const fovRad = (state.camera.fov * Math.PI) / 180;
+        const distance = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
+        state.orbitControls.distance = distance;
+
+        if (view === 'top') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = -Math.PI / 2 + 0.01;
+        } else if (view === 'front') {
+          state.orbitControls.yaw = Math.PI / 2;
+          state.orbitControls.pitch = 0;
+        } else if (view === 'sides') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = 0;
+        }
+        
+        viewer.updateOrbitCamera();
+      });
+    });
+
+    document.querySelectorAll('.color-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const hex = pill.dataset.color;
+        const input = document.getElementById('colorInput');
+        const dot = document.getElementById('colorDot');
+        if (input) input.value = hex;
+        if (dot) dot.style.background = hex;
+        state.materialColor = parseInt(hex.slice(1), 16);
+        if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
+      });
+    });
+
     document.getElementById('toolkitsBtn').addEventListener('click', () => {
       window.location.href = './dashboard.html';
     });
