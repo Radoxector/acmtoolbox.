@@ -10,12 +10,11 @@ let _grid = null;
 let _axes = null;
 let _ground = null;
 let _controlsReady = false;
-let _envMap = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────────────────────────────────────
-export async function init3D() {
+export function init3D() {
   const canvas = document.getElementById('canvas3d');
   if (!canvas) { console.error('[3D] Canvas not found'); return; }
 
@@ -50,11 +49,10 @@ export async function init3D() {
   updateOrbitCamera();
 
   _setupLighting();
-  await _setupEnvironment();
 
   // Grid and axes
   _axes = new THREE.AxesHelper(20);
-  _axes.visible = false;
+  _axes.visible = state.showAxes ?? true;
   state.scene.add(_axes);
 
   window.addEventListener('resize', _onResize);
@@ -67,27 +65,7 @@ export async function init3D() {
   console.log('[3D] Enhanced viewer initialised');
 }
 
-async function _setupEnvironment() {
-  try {
-    const loader = new THREE.TextureLoader();
-    const texture = await loader.loadAsync('https://cdn.needle.tools/static/hdris/canary_wharf_2k.pmrem.ktx2');
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    _envMap = texture;
-    state.scene.environment = _envMap;
-  } catch (e) {
-    console.warn('[3D] Failed to load HDRI environment map', e);
-  }
-}
-
 function _setupLighting() {
-
-
-
-// ... (rest of the file)
-
-// ... (rest of the file)
-
-// ... (rest of the file)
   state.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   state.scene.add(new THREE.HemisphereLight(0xddeeff, 0x664422, 0.6));
 
@@ -186,14 +164,14 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.4,
+    metalness: 0.,
     roughness: 0.1,
     side:      THREE.FrontSide,
   });
 
   const innerMaterial = new THREE.MeshStandardMaterial({
-    color:     '#2d2d2d',
-    metalness: 0.2,
+    color:     0x333333,
+    metalness: 0.,
     roughness: 0.5,
     side:      THREE.BackSide,
   });
@@ -319,41 +297,51 @@ function _setupOrbitControls() {
 
   const canvas = document.getElementById('canvas3d');
   const ROT_SPD = 0.008;
+  const PAN_SPD = 0.4;
 
-  let dragging = false;
+  let dragging = false, panning = false;
   let prev = { x: 0, y: 0 };
 
   canvas.addEventListener('mousedown', e => {
     state.orbitControls.isAutoRotating = false;
     _iner.active = false;
-    if (e.button === 0) dragging = true;
+    if (e.button === 1 || e.button === 2) panning = true;
+    else dragging = true;
     prev = { x: e.clientX, y: e.clientY };
   });
 
-  canvas.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const dx = e.clientX - prev.x;
-    const dy = e.clientY - prev.y;
+   canvas.addEventListener('mousemove', e => {
+     if (!dragging && !panning) return;
+     const dx = e.clientX - prev.x;
+     const dy = e.clientY - prev.y;
+ 
+     if (dragging) {
+       const s = (300 / state.orbitControls.distance) * ROT_SPD;
+       _iner.yawV = dx * s;
+       _iner.pitchV = dy * s;
+       state.orbitControls.yaw += _iner.yawV;
+       state.orbitControls.pitch += _iner.pitchV;
+       state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
+     }
+     if (panning) {
+       const s = (state.orbitControls.distance / 1000) * PAN_SPD;
+       _iner.panXV = -dx * s;
+       _iner.panYV = dy * s;
+       state.orbitControls.panX += _iner.panXV;
+       state.orbitControls.panY += _iner.panYV;
+     }
+     updateOrbitCamera();
+     prev = { x: e.clientX, y: e.clientY };
+   });
 
-    const s = (300 / state.orbitControls.distance) * ROT_SPD;
-    _iner.yawV = dx * s;
-    _iner.pitchV = dy * s;
-    state.orbitControls.yaw += _iner.yawV;
-    state.orbitControls.pitch += _iner.pitchV;
-    state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
-    
-    updateOrbitCamera();
-    prev = { x: e.clientX, y: e.clientY };
-  });
 
   canvas.addEventListener('mouseup', () => {
-    if (dragging) _iner.active = true;
-    dragging = false;
+    if (dragging || panning) _iner.active = true;
+    dragging = panning = false;
   });
-
   canvas.addEventListener('mouseleave', () => {
-    if (dragging) _iner.active = true;
-    dragging = false;
+    if (dragging || panning) _iner.active = true;
+    dragging = panning = false;
   });
 
   canvas.addEventListener('wheel', e => {
@@ -378,23 +366,29 @@ function _setupOrbitControls() {
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     const t = [...e.touches];
-    if (t.length === 1 && lastT.length >= 1) {
-      const dx = t[0].clientX - lastT[0].clientX;
-      const dy = t[0].clientY - lastT[0].clientY;
-      const s = (150 / state.orbitControls.distance) * ROT_SPD;
-      state.orbitControls.yaw += dx * s;
-      state.orbitControls.pitch += dy * s;
-      state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
-    } else if (t.length === 2 && lastT.length >= 2) {
-      const pinch = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-      if (lastPinch !== null) {
-        state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance * (lastPinch / pinch), 10000));
-      }
-      lastPinch = pinch;
-    }
-    updateOrbitCamera();
-    lastT = t;
-  }, { passive: false });
+     if (t.length === 1 && lastT.length >= 1) {
+       const dx = t[0].clientX - lastT[0].clientX;
+       const dy = t[0].clientY - lastT[0].clientY;
+       const s = (150 / state.orbitControls.distance) * ROT_SPD;
+       state.orbitControls.yaw += dx * s;
+       state.orbitControls.pitch += dy * s;
+       state.orbitControls.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, state.orbitControls.pitch));
+     } else if (t.length === 2 && lastT.length >= 2) {
+       const avgDx = ((t[0].clientX - lastT[0].clientX) + (t[1].clientX - lastT[0].clientX)) / 2;
+       const avgDy = ((t[0].clientY - lastT[0].clientY) + (t[1].clientY - lastT[1].clientY)) / 2;
+       const ps = (state.orbitControls.distance / 1000) * PAN_SPD;
+       state.orbitControls.panX += -avgDx * ps;
+       state.orbitControls.panY += avgDy * ps;
+       const pinch = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+       if (lastPinch !== null) {
+         state.orbitControls.distance = Math.max(1, Math.min(state.orbitControls.distance * (lastPinch / pinch), 10000));
+       }
+       lastPinch = pinch;
+     }
+     updateOrbitCamera();
+     lastT = t;
+   }, { passive: false });
+
 
   canvas.addEventListener('touchend', () => {
     if (lastT.length > 0) _iner.active = true;
@@ -414,10 +408,6 @@ export function toggleAxes(visible) {
   if (_axes) _axes.visible = visible;
 }
 
-export function toggleEnvironment(enabled) {
-  if (state.mesh && state.mesh.children[0]) {
-    const outerMesh = state.mesh.children[0];
-    outerMesh.material.envMap = enabled ? _envMap : null;
-    outerMesh.material.needsUpdate = true;
-  }
+export function setAutoRotate(enabled) {
+  state.orbitControls.isAutoRotating = enabled;
 }
