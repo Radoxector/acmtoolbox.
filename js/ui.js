@@ -71,16 +71,6 @@ export function displaySVG(result) {
   setTimeout(() => centerSVG(), 150);
 }
 
-  const empty2d = document.getElementById('empty2d');
-  if (empty2d) empty2d.style.display = 'none';
-
-  state.svgZoom = 1;
-  state.svgPan  = { x: 0, y: 0 };
-
-  // Use a slightly longer delay to ensure browser has rendered the SVG content for bounding box calculation
-  setTimeout(() => centerSVG(), 100);
-}
-
 // ─── Center SVG to fit container with 10% padding ─────────────────────────
 export function centerSVG() {
   const svgLayer  = document.getElementById('svgLayer');
