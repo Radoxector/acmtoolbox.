@@ -69,8 +69,15 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Use a slightly longer delay to ensure browser has rendered the SVG content for bounding box calculation
-  setTimeout(() => centerSVG(), 150);
+   // Use a slightly longer delay to ensure browser has rendered the SVG content for bounding box calculation
+   setTimeout(() => {
+     try {
+       centerSVG();
+     } catch (e) {
+       console.warn('centerSVG failed, skipping centering:', e.message);
+     }
+   }, 150);
+
 }
 
 // ─── Center SVG to fit container with 10% padding ─────────────────────────
