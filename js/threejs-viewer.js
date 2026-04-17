@@ -166,11 +166,24 @@ export function buildModel3D(vertices, faces) {
     color:     state.materialColor,
     metalness: 0.,
     roughness: 0.1,
-    side:      THREE.DoubleSide,
+    side:      THREE.FrontSide,
   });
 
-  state.mesh = new THREE.Mesh(geo, state.meshMaterial);
-  state.mesh.castShadow = state.mesh.receiveShadow = false;
+  const innerMaterial = new THREE.MeshStandardMaterial({
+    color:     0x333333,
+    metalness: 0.,
+    roughness: 0.5,
+    side:      THREE.BackSide,
+  });
+
+  const outerMesh = new THREE.Mesh(geo, state.meshMaterial);
+  const innerMesh = new THREE.Mesh(geo, innerMaterial);
+  outerMesh.castShadow = outerMesh.receiveShadow = false;
+  innerMesh.castShadow = innerMesh.receiveShadow = false;
+
+  state.mesh = new THREE.Group();
+  state.mesh.add(outerMesh);
+  state.mesh.add(innerMesh);
 
   // Center the model at (0,0,0)
   const box = new THREE.Box3().setFromObject(state.mesh);
