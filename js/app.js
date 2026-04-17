@@ -386,7 +386,6 @@ async function initApp() {
     document.getElementById('zoomFit').addEventListener('click', () => {
       state.svgZoom = 1;
       state.svgPan = { x: 0, y: 0 };
-      ui.centerSVG();
     });
 
     // SVG pan — mouse
