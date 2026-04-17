@@ -19,7 +19,7 @@
 
   <!-- ═══ HEADER ════════════════════════════════════════════════════════════ -->
   <header class="header">
-    <div class="logo">ACM<em>unfolder</em></div>
+    <div class="logo">ACM<em>Unfolder</em></div>
     <div class="header-file">
       <span class="fname" id="fileName">No model loaded</span>
     </div>
@@ -40,7 +40,7 @@
       <span class="tab-icon">⬡</span> 3D View
     </button>
     <button class="tab-btn" data-tab="2d" id="tab2d">
-      <span class="tab-icon">◱</span> 2D Pattern
+      <span class="tab-icon">◱</span> 2D Template
     </button>
     <button class="tab-btn" data-tab="library" id="tabLib">
       <span class="tab-icon">▦</span> Library
@@ -73,7 +73,7 @@
         <div class="svg-viewer" id="svgViewer">
           <div id="empty2d" class="empty-2d">
             <div class="empty-2d-icon">◱</div>
-            <div class="empty-2d-text">Unfold a model to see the pattern here</div>
+            <div class="empty-2d-text">Unfold a 3D Model to see the 2D Template here</div>
           </div>
           <div id="svgLayer"></div>
         </div>
@@ -82,7 +82,7 @@
         <div class="zoom-pill">
           <button class="zoom-btn" id="zoomOut" title="Zoom out">−</button>
           <div class="zoom-divider"></div>
-          <button class="zoom-btn zoom-fit-btn" id="zoomFit">⊡ Fit</button>
+          <button class="zoom-btn zoom-fit-btn" id="zoomFit">⊡</button>
           <div class="zoom-divider"></div>
           <button class="zoom-btn" id="zoomIn" title="Zoom in">+</button>
         </div>
@@ -147,32 +147,13 @@
         <!-- Primary actions -->
         <div class="action-btns">
           <button class="unfold-btn" id="unfoldBtn" disabled>
-            ▶ Unfold
+            ▶ Unfold 3D Model
             <span class="counter-pip" id="counterPip">—</span>
           </button>
-          <button class="download-btn" id="downloadBtn" disabled>↓ SVG</button>
+          <button class="download-btn" id="downloadBtn" disabled>↓ Download 2D Template</button>
         </div>
       </div>
  
-      <!-- Stats drawer -->
-      <button class="stats-toggle" id="statsToggle">▾ Details <span class="arrow">▾</span></button>
-      <div class="stats-row" id="statsRow">
-        <div class="stat-chip">Vertices <strong id="stV">—</strong></div>
-        <div class="stat-chip">Faces <strong id="stF">—</strong></div>
-        <div class="stat-chip">Edges <strong id="stE">—</strong></div>
-        <div class="stat-chip">Islands <strong id="stI">—</strong></div>
-      </div>
- 
-    </div><!-- end action-bar -->
-
-      <!-- Stats drawer -->
-      <button class="stats-toggle" id="statsToggle">▾ Details <span class="arrow">▾</span></button>
-      <div class="stats-row" id="statsRow">
-        <div class="stat-chip">Vertices <strong id="stV">—</strong></div>
-        <div class="stat-chip">Faces <strong id="stF">—</strong></div>
-        <div class="stat-chip">Edges <strong id="stE">—</strong></div>
-        <div class="stat-chip">Islands <strong id="stI">—</strong></div>
-      </div>
 
     </div><!-- end action-bar -->
 
