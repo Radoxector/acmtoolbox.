@@ -67,6 +67,8 @@ async function handleUnfold() {
     state.unfoldResult = response;
     ui.displaySVG(response);
     document.getElementById('downloadBtn').disabled = false;
+    const statusMsg = document.getElementById('statusMsg');
+    if (statusMsg) statusMsg.textContent = 'Unfold successful!';
     ui.updateStatus(response);
 
     // Switch to 2D panel after successful unfold
