@@ -143,13 +143,18 @@ function loadModel(modelData) {
 
   applyScale();
 
-  const fileName = document.getElementById('fileName');
-  fileName.textContent = modelData.name;
-  fileName.classList.add('ok');
+   const fileName = document.getElementById('fileName');
+   if (fileName) fileName.textContent = modelData.name;
+   if (fileName) fileName.classList.add('ok');
+   
+   const unfoldBtn = document.getElementById('unfoldBtn');
+   if (unfoldBtn) unfoldBtn.disabled = false;
 
-  document.getElementById('unfoldBtn').disabled = false;
-  document.getElementById('stV').textContent = modelData.vertices.length;
-  document.getElementById('stF').textContent = modelData.faces.length;
+   const stV = document.getElementById('stV');
+   if (stV) stV.textContent = modelData.vertices.length;
+
+   const stF = document.getElementById('stF');
+   if (stF) stF.textContent = modelData.faces.length;
 
   // Auto-switch to 3D on model load
   if (typeof switchTab === 'function') switchTab('3d');
