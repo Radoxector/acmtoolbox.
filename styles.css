@@ -307,23 +307,19 @@ body {
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 .panel-2d {
-  background: #fff;
+  background: #004fee;
 }
 
 .svg-viewer {
   flex: 1;
-  overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  position: relative;
-  background: #f0f0f0;
+  padding: 1px;
+  background: #000000;
 }
 
 #svgLayer {
-  max-width: 100%;
-  max-height: 100%;
   transform-origin: center;
 }
 
