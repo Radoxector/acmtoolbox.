@@ -162,33 +162,60 @@ export function buildModel3D(vertices, faces) {
   geo.computeBoundingBox();
   geo.computeBoundingSphere();
 
-  state.meshMaterial = new THREE.MeshStandardMaterial({
-    color:     state.materialColor,
-    metalness: 0.2,
-    roughness: 0.1,
-    side:      THREE.DoubleSide,
-  });
-
   state.mesh = new THREE.Mesh(geo, state.meshMaterial);
   state.mesh.castShadow = state.mesh.receiveShadow = false;
 
+  // For double-sided rendering with different colors for inner/outer faces
+  // We create two materials: one for the front and one for the back.
+  // However, MeshStandardMaterial doesn't support different colors per side in one object easily 
+  // without multiple meshes or custom shaders. 
+  // The most robust way for a single mesh is to use two meshes sharing the same geometry:
+  // one with side: DoubleSide and a dark material, and one with side: FrontSide and the main material.
+  // But since we want the 'outer' to be the user-selected color, we'll do:
+  // 1. A 'back' mesh that is DoubleSide + Dark Grey.
+  // 2. A 'front' mesh that is FrontSide + User Color.
+  // Actually, a better way to ensure the 'outer' is what they see is:
+  // Mesh 1: side: BackSide, color: dark grey.
+  // Mesh 2: side: FrontSide, color: user color.
+
+  const backMaterial = new THREE.MeshStandardMaterial({
+    color: 0x222222,
+    metalness: 0.1,
+    roughness: 0.8,
+    side: THREE.BackSide,
+  });
+
+  const frontMaterial = state.meshMaterial; // This is the user-selected one
+  frontMaterial.side = THREE.FrontSide;
+
+  const meshBack = new THREE.Mesh(geo, backMaterial);
+  const meshFront = new THREE.Mesh(geo, frontMaterial);
+  
+  meshBack.castShadow = meshBack.receiveShadow = false;
+  meshFront.castShadow = meshFront.receiveShadow = false;
+
+  state.mesh = meshFront; // We keep state.mesh pointing to the front one for logic/bounding box
+  state.meshGroup = new THREE.Group(); // We'll use a group to manage both
+  state.meshGroup.add(meshBack);
+  state.meshGroup.add(meshFront);
+
   // Center the model at (0,0,0)
-  const box = new THREE.Box3().setFromObject(state.mesh);
+  const box = new THREE.Box3().setFromObject(meshFront);
   const center = box.getCenter(new THREE.Vector3());
-  state.mesh.position.set(-center.x, -center.y, -center.z);
-  state.scene.add(state.mesh);
+  state.meshGroup.position.set(-center.x, -center.y, -center.z);
+  state.scene.add(state.meshGroup);
 
   // Wireframe
   state.meshWireframe = new THREE.LineSegments(
     _buildWireframeGeo(faces, vertices),
     new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, fog: false })
   );
-  state.meshWireframe.position.copy(state.mesh.position);
+  state.meshWireframe.position.copy(state.meshGroup.position);
   state.meshWireframe.visible = true;
   state.scene.add(state.meshWireframe);
 
   // Re‑compute bounding box after centering
-  const newBox = new THREE.Box3().setFromObject(state.mesh);
+  const newBox = new THREE.Box3().setFromObject(state.meshGroup);
 
   // Bounding box points (optional, used for UI)
   const bbGeo = new THREE.BufferGeometry();
