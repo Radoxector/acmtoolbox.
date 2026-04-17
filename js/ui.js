@@ -52,15 +52,13 @@ export function displaySVG(result) {
   svgLayer.style.display = 'block';
 
   const svgElem = svgLayer.querySelector('svg');
-  if (svgElem) {
-    // Do NOT set explicit width/height — let the viewBox determine natural size (1 unit = 1 pixel)
-    svgElem.style.display = 'block';
-    // Override any CSS max-width/height that could constrain the SVG
-    svgElem.style.maxWidth = 'none';
-    svgElem.style.maxHeight = 'none';
-    // Keep strokes readable
-    svgElem.style.vectorEffect = 'non-scaling-stroke';
-  }
+    if (svgElem) {
+      // Do NOT set explicit width/height — let the viewBox determine natural size (1 unit = 1 pixel)
+      svgElem.style.display = 'block';
+      // Override any CSS max-width/height that could constrain the SVG
+      svgElem.style.maxWidth = 'none';
+      svgElem.style.maxHeight = 'none';
+    }
 
   const empty2d = document.getElementById('empty2d');
   if (empty2d) empty2d.style.display = 'none';
