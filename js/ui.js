@@ -55,8 +55,9 @@ export function displaySVG(result) {
   if (svgElem) {
     // Ensure the SVG is visible and takes up space for measurement
     svgElem.style.display = 'block';
-    svgElem.style.width = 'auto';
-    svgElem.style.height = 'auto';
+    // Use width/height 100% to ensure it actually expands to the layer size
+    svgElem.style.width = '100%';
+    svgElem.style.height = '100%';
     svgElem.style.maxWidth = 'none';
     svgElem.style.maxHeight = 'none';
   }
