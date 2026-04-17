@@ -247,7 +247,7 @@ body {
   top: 20px;
   right: 20px;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: 10px;
   z-index: 10;
 }

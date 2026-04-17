@@ -30,6 +30,7 @@ export async function init3D() {
   }
 
   state.scene = new THREE.Scene();
+  state.scene.fog = new THREE.FogExp2(0x808080, 0.0008);
 
   const w = canvas.offsetWidth || 800;
   const h = canvas.offsetHeight || 600;
@@ -69,21 +70,16 @@ export async function init3D() {
 async function _setupEnvironment() {
   try {
     const loader = new THREE.TextureLoader();
-    // Using the provided KTX2 URL. Note: standard TextureLoader might fail for KTX2 
-    // if the environment doesn't have the KTX2Loader/transcoder.
-    // However, we'll attempt to load it as is.
     const texture = await loader.loadAsync('https://cdn.needle.tools/static/hdris/canary_wharf_2k.pmrem.ktx2');
     texture.mapping = THREE.EquirectangularReflectionMapping;
     _envMap = texture;
     state.scene.environment = _envMap;
-    console.log('[3D] Environment map loaded successfully');
   } catch (e) {
-    console.warn('[3D] Failed to load HDRI environment map. Check if KTX2 loader is required.', e);
+    console.warn('[3D] Failed to load HDRI environment map', e);
   }
 }
 
 function _setupLighting() {
-
 
 
 
@@ -190,16 +186,15 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.6,
-    roughness: 0.05,
-    envMapIntensity: 1.0,
+    metalness: 0.4,
+    roughness: 0.1,
     side:      THREE.FrontSide,
   });
 
   const innerMaterial = new THREE.MeshStandardMaterial({
-    color:     '#1a1a1a',
-    metalness: 0.0,
-    roughness: 0.9,
+    color:     '#2d2d2d',
+    metalness: 0.2,
+    roughness: 0.5,
     side:      THREE.BackSide,
   });
 
@@ -211,7 +206,6 @@ export function buildModel3D(vertices, faces) {
   state.mesh = new THREE.Group();
   state.mesh.add(outerMesh);
   state.mesh.add(innerMesh);
-
 
   // Center the model at (0,0,0)
   const box = new THREE.Box3().setFromObject(state.mesh);
@@ -424,8 +418,6 @@ export function toggleEnvironment(enabled) {
   if (state.mesh && state.mesh.children[0]) {
     const outerMesh = state.mesh.children[0];
     outerMesh.material.envMap = enabled ? _envMap : null;
-    outerMesh.material.envMapIntensity = enabled ? 1.0 : 0.0;
     outerMesh.material.needsUpdate = true;
   }
 }
-
