@@ -53,14 +53,23 @@ export function displaySVG(result) {
 
   const svgElem = svgLayer.querySelector('svg');
   if (svgElem) {
-    // Ensure the SVG is visible and takes up space for measurement
     svgElem.style.display = 'block';
-    // Use width/height 100% to ensure it actually expands to the layer size
     svgElem.style.width = '100%';
     svgElem.style.height = '100%';
     svgElem.style.maxWidth = 'none';
     svgElem.style.maxHeight = 'none';
   }
+
+  const empty2d = document.getElementById('empty2d');
+  if (empty2d) empty2d.style.display = 'none';
+
+  // IMPORTANT: Reset state BEFORE centering to prevent conflicts with old zoom/pan
+  state.svgZoom = 1;
+  state.svgPan  = { x: 0, y: 0 };
+
+  // Use a slightly longer delay to ensure browser has rendered the SVG content for bounding box calculation
+  setTimeout(() => centerSVG(), 150);
+}
 
   const empty2d = document.getElementById('empty2d');
   if (empty2d) empty2d.style.display = 'none';
@@ -103,18 +112,12 @@ export function centerSVG() {
   let scale = Math.min(scaleX, scaleY, 10);
 
   // Calculate pan to center the viewBox content
-  // We want the (vMinX, vMinY) to be at the visual center of the container after scaling
-  // but since we use transform-origin: 0 0, we need to calculate the offset.
+  // Since we use transform-origin: 0 0, the translate(x, y) moves the 0,0 point of the SVG.
+  // We want the center of the viewBox (vMinX + vWidth/2, vMinY + vHeight/2) 
+  // to be at (cRect.width/2, cRect.height/2) after scaling.
   
-  // The center of the container in coordinate space:
-  // cRect.width/2, cRect.height/2
-  
-  // The center of the SVG content in coordinate space:
-  // vMinX + vWidth/2, vMinY + vHeight/2
-  
-  // To center it, we want:
-  // panX + (vMinX + vWidth/2) * scale = cRect.width / 2
-  // panY + (vMinY + vHeight/2) * scale = cRect.height / 2
+  // Equation: panX + (vMinX + vWidth/2) * scale = cRect.width / 2
+  // => panX = (cRect.width / 2) - (vMinX + vWidth / 2) * scale
 
   const panX = (cRect.width / 2) - (vMinX + vWidth / 2) * scale;
   const panY = (cRect.height / 2) - (vMinY + vHeight / 2) * scale;
