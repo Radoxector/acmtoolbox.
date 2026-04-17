@@ -174,11 +174,10 @@ export function buildModel3D(vertices, faces) {
     color: 0x333333,
     metalness: 0.1,
     roughness: 0.8,
-    side: THREE.BackSide,
   });
 
   const frontMaterial = state.meshMaterial; // This is the user-selected one
-  frontMaterial.side = THREE.FrontSide;
+  frontMaterial.FrontSide = THREE.FrontSide;
 
   const meshBack = new THREE.Mesh(geo, backMaterial);
   const meshFront = new THREE.Mesh(geo, frontMaterial);
