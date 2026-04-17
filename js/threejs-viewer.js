@@ -167,19 +167,11 @@ export function buildModel3D(vertices, faces) {
 
   // For double-sided rendering with different colors for inner/outer faces
   // We create two materials: one for the front and one for the back.
-  // However, MeshStandardMaterial doesn't support different colors per side in one object easily 
-  // without multiple meshes or custom shaders. 
   // The most robust way for a single mesh is to use two meshes sharing the same geometry:
-  // one with side: DoubleSide and a dark material, and one with side: FrontSide and the main material.
-  // But since we want the 'outer' to be the user-selected color, we'll do:
-  // 1. A 'back' mesh that is DoubleSide + Dark Grey.
-  // 2. A 'front' mesh that is FrontSide + User Color.
-  // Actually, a better way to ensure the 'outer' is what they see is:
-  // Mesh 1: side: BackSide, color: dark grey.
-  // Mesh 2: side: FrontSide, color: user color.
+  // one with side: BackSide and a dark material, and one with side: FrontSide and the main material.
 
   const backMaterial = new THREE.MeshStandardMaterial({
-    color: 0x222222,
+    color: 0x333333,
     metalness: 0.1,
     roughness: 0.8,
     side: THREE.BackSide,
