@@ -72,50 +72,7 @@ export function displaySVG(result) {
 }
 
 // ─── Center SVG to fit container with 10% padding ─────────────────────────
-export function centerSVG() {
-  const svgLayer  = document.getElementById('svgLayer');
-  const svgElem   = svgLayer?.querySelector('svg');
-  const container = document.getElementById('svgViewer');
-  if (!svgElem || !container) return;
 
-  // Reset transform to measure natural size
-  svgElem.style.transform = '';
-
-  const cRect = container.getBoundingClientRect();
-  if (cRect.width === 0 || cRect.height === 0) return;
-
-  // Get the SVG's bounding box from its viewBox
-  const viewBox = svgElem.getAttribute('viewBox');
-  if (!viewBox) return;
-
-  const parts = viewBox.trim().split(/\s+/);
-  if (parts.length < 4) return;
-
-  const vMinX = parseFloat(parts[0]);
-  const vMinY = parseFloat(parts[1]);
-  const vWidth = parseFloat(parts[2]);
-  const vHeight = parseFloat(parts[3]);
-
-  // Compute scale to fit viewBox into container with 10% padding
-  const scaleX = (cRect.width * 0.9) / vWidth;
-  const scaleY = (cRect.height * 0.9) / vHeight;
-  let scale = Math.min(scaleX, scaleY, 10);
-
-  // Calculate pan to center the viewBox content
-  // Since we use transform-origin: 0 0, the translate(x, y) moves the 0,0 point of the SVG.
-  // We want the center of the viewBox (vMinX + vWidth/2, vMinY + vHeight/2) 
-  // to be at (cRect.width/2, cRect.height/2) after scaling.
-  
-  // Equation: panX + (vMinX + vWidth/2) * scale = cRect.width / 2
-  // => panX = (cRect.width / 2) - (vMinX + vWidth / 2) * scale
-
-  const panX = (cRect.width / 2) - (vMinX + vWidth / 2) * scale;
-  const panY = (cRect.height / 2) - (vMinY + vHeight / 2) * scale;
-
-  state.svgZoom = scale;
-  state.svgPan  = { x: panX, y: panY };
-  updateSVGTransform();
-}
 
 // ─── Apply CSS transform to SVG ───────────────────────────────────────────
 export function updateSVGTransform() {
