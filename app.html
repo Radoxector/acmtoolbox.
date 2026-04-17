@@ -50,12 +50,14 @@
   <!-- ═══ APP BODY ══════════════════════════════════════════════════════════ -->
   <div class="app-body">
 
-    <!-- PANELS WRAP -->
+    <!-- ── PANELS WRAP ─────────────────────────────────────────────────── -->
     <div class="panels-wrap">
 
       <!-- PANEL: 3D Viewport -->
       <div class="panel panel-3d active" id="panel3d">
         <canvas id="canvas3d"></canvas>
+
+        <!-- Floating vertical toolbar -->
         <div class="toolbar-3d">
           <button class="tool-btn" id="resetCameraBtn" title="Reset Camera">⌖</button>
           <button class="tool-btn" id="wireframeToggle" title="Wireframe">⊟</button>
@@ -75,6 +77,8 @@
           </div>
           <div id="svgLayer"></div>
         </div>
+
+        <!-- Zoom pill -->
         <div class="zoom-pill">
           <button class="zoom-btn" id="zoomOut" title="Zoom out">−</button>
           <div class="zoom-divider"></div>
@@ -87,8 +91,9 @@
       <!-- PANEL: Library -->
       <div class="panel panel-library" id="panelLib">
         <div class="library-topbar">
-          <button class="library-upload-btn" id="loadJsonBtn">⬆ Upload JSON Model</button>
-          <button class="library-upload-btn" id="loadDemoBtn" style="margin-left: 8px;">📦 Demo Model</button>
+          <button class="library-upload-btn" id="loadJsonBtn">
+            ⬆ Upload JSON Model
+          </button>
           <input type="file" id="fileInput" accept=".json" hidden>
         </div>
         <div class="library-grid" id="librarySlots"></div>
@@ -99,7 +104,7 @@
     <!-- ═══ ACTION BAR (always visible) ═══════════════════════════════════ -->
     <div class="action-bar">
 
-      <!-- Mobile dimension inputs (visible on small screens) -->
+       <!-- Mobile: expand dims -->
       <div class="dims-expanded" id="dimsExpanded">
         <div class="dim-field">
           <span class="dim-label">W</span>
@@ -117,38 +122,50 @@
           <span class="dim-unit">cm</span>
         </div>
       </div>
+    
+       <!-- Desktop dims row -->
+        <div class="dims-row">
+          <div class="dim-field">
+            <span class="dim-label">W</span>
+            <input type="number" id="dimXd" class="dim-input" value="20" min="0.1" step="0.1">
+            <span class="dim-unit">cm</span>
+          </div>
+          <div class="dim-field">
+            <span class="dim-label">H</span>
+            <input type="number" id="dimYd" class="dim-input" value="10" min="0.1" step="0.1">
+            <span class="dim-unit">cm</span>
+          </div>
+          <div class="dim-field">
+            <span class="dim-label">D</span>
+            <input type="number" id="dimZd" class="dim-input" value="7.5" min="0.1" step="0.1">
+            <span class="dim-unit">cm</span>
+          </div>
+        </div>
 
-      <!-- Desktop dimension row (hidden on mobile via CSS) -->
-      <div class="dims-row">
-        <div class="dim-field">
-          <span class="dim-label">W</span>
-          <input type="number" id="dimX_desktop" class="dim-input" value="20" min="0.1" step="0.1">
-          <span class="dim-unit">cm</span>
-        </div>
-        <div class="dim-field">
-          <span class="dim-label">H</span>
-          <input type="number" id="dimY_desktop" class="dim-input" value="10" min="0.1" step="0.1">
-          <span class="dim-unit">cm</span>
-        </div>
-        <div class="dim-field">
-          <span class="dim-label">D</span>
-          <input type="number" id="dimZ_desktop" class="dim-input" value="7.5" min="0.1" step="0.1">
-          <span class="dim-unit">cm</span>
+        <div class="action-bar-spacer"></div>
+
+        <!-- Primary actions -->
+        <div class="action-btns">
+          <button class="unfold-btn" id="unfoldBtn" disabled>
+            ▶ Unfold
+            <span class="counter-pip" id="counterPip">—</span>
+          </button>
+          <button class="download-btn" id="downloadBtn" disabled>↓ SVG</button>
         </div>
       </div>
-
-      <div class="action-bar-spacer"></div>
-
-      <!-- Primary actions -->
-      <div class="action-btns">
-        <button class="unfold-btn" id="unfoldBtn" disabled>
-          ▶ Unfold
-          <span class="counter-pip" id="counterPip">—</span>
-        </button>
-        <button class="download-btn" id="downloadBtn" disabled>↓ SVG</button>
+ 
+      <!-- Stats drawer -->
+      <button class="stats-toggle" id="statsToggle">▾ Details <span class="arrow">▾</span></button>
+      <div class="stats-row" id="statsRow">
+        <div class="stat-chip">Vertices <strong id="stV">—</strong></div>
+        <div class="stat-chip">Faces <strong id="stF">—</strong></div>
+        <div class="stat-chip">Edges <strong id="stE">—</strong></div>
+        <div class="stat-chip">Islands <strong id="stI">—</strong></div>
       </div>
+ 
+    </div><!-- end action-bar -->
 
-      <!-- Stats toggle and drawer (now inside action-bar) -->
+      <!-- Stats drawer -->
       <button class="stats-toggle" id="statsToggle">▾ Details <span class="arrow">▾</span></button>
       <div class="stats-row" id="statsRow">
         <div class="stat-chip">Vertices <strong id="stV">—</strong></div>
@@ -181,28 +198,37 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- Three.js -->
+  <!-- ════ THREE.JS ═══════════════════════════════════════════════════════ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- Tab switching logic -->
+  <!-- Tab switching logic (must be before module script) -->
   <script>
+    // Global tab switcher — called from app.js too
     function switchTab(name) {
+      // Panels
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       const target = { '3d': 'panel3d', '2d': 'panel2d', 'library': 'panelLib' }[name];
       if (target) document.getElementById(target).classList.add('active');
 
+      // Desktop tabs
       document.querySelectorAll('.tab-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === name);
       });
+
+      // Mobile nav
       document.querySelectorAll('.nav-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === name);
       });
 
+      // Trigger canvas resize when switching to 3D
       if (name === '3d') {
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 50);
       }
     }
 
+    // Wire up all tab buttons
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.tab-btn, .nav-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -210,7 +236,6 @@
     });
   </script>
 
-  <!-- Your main app module -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
