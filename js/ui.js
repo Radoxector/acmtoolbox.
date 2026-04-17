@@ -52,13 +52,14 @@ export function displaySVG(result) {
   svgLayer.style.display = 'block';
 
   const svgElem = svgLayer.querySelector('svg');
-    if (svgElem) {
-      // Do NOT set explicit width/height — let the viewBox determine natural size (1 unit = 1 pixel)
-      svgElem.style.display = 'block';
-      // Override any CSS max-width/height that could constrain the SVG
-      svgElem.style.maxWidth = 'none';
-      svgElem.style.maxHeight = 'none';
-    }
+  if (svgElem) {
+    // Ensure the SVG is visible and takes up space for measurement
+    svgElem.style.display = 'block';
+    svgElem.style.width = 'auto';
+    svgElem.style.height = 'auto';
+    svgElem.style.maxWidth = 'none';
+    svgElem.style.maxHeight = 'none';
+  }
 
   const empty2d = document.getElementById('empty2d');
   if (empty2d) empty2d.style.display = 'none';
@@ -66,8 +67,8 @@ export function displaySVG(result) {
   state.svgZoom = 1;
   state.svgPan  = { x: 0, y: 0 };
 
-  // Wait for one layout pass, then center
-  requestAnimationFrame(() => centerSVG());
+  // Use a slightly longer delay to ensure browser has rendered the SVG content for bounding box calculation
+  setTimeout(() => centerSVG(), 100);
 }
 
 // ─── Center SVG to fit container with 10% padding ─────────────────────────
@@ -83,34 +84,39 @@ export function centerSVG() {
   const cRect = container.getBoundingClientRect();
   if (cRect.width === 0 || cRect.height === 0) return;
 
-  // Get the SVG's natural dimensions (pixels) after reset
-  const sRect = svgElem.getBoundingClientRect();
-  const svgWidth = sRect.width;
-  const svgHeight = sRect.height;
-  if (svgWidth === 0 || svgHeight === 0) return;
-
-  // Compute scale to fit inside container with 10% padding
-  const scaleX = (cRect.width * 0.9) / svgWidth;
-  const scaleY = (cRect.height * 0.9) / svgHeight;
-  let scale = Math.min(scaleX, scaleY, 10); // limit max zoom
-
-  // Get viewBox minX/minY for accurate panning (content offset)
+  // Get the SVG's bounding box from its viewBox
   const viewBox = svgElem.getAttribute('viewBox');
-  let minX = 0, minY = 0;
-  if (viewBox) {
-    const parts = viewBox.trim().split(/\s+/);
-    if (parts.length >= 4) {
-      minX = parseFloat(parts[0]);
-      minY = parseFloat(parts[1]);
-    }
-  }
+  if (!viewBox) return;
 
-  // Center the scaled content
-  const visualWidth  = svgWidth  * scale;
-  const visualHeight = svgHeight * scale;
-  // Pan to center the content, accounting for the viewBox offset
-  const panX = (cRect.width  - visualWidth)  / 2 - (minX * scale);
-  const panY = (cRect.height - visualHeight) / 2 - (minY * scale);
+  const parts = viewBox.trim().split(/\s+/);
+  if (parts.length < 4) return;
+
+  const vMinX = parseFloat(parts[0]);
+  const vMinY = parseFloat(parts[1]);
+  const vWidth = parseFloat(parts[2]);
+  const vHeight = parseFloat(parts[3]);
+
+  // Compute scale to fit viewBox into container with 10% padding
+  const scaleX = (cRect.width * 0.9) / vWidth;
+  const scaleY = (cRect.height * 0.9) / vHeight;
+  let scale = Math.min(scaleX, scaleY, 10);
+
+  // Calculate pan to center the viewBox content
+  // We want the (vMinX, vMinY) to be at the visual center of the container after scaling
+  // but since we use transform-origin: 0 0, we need to calculate the offset.
+  
+  // The center of the container in coordinate space:
+  // cRect.width/2, cRect.height/2
+  
+  // The center of the SVG content in coordinate space:
+  // vMinX + vWidth/2, vMinY + vHeight/2
+  
+  // To center it, we want:
+  // panX + (vMinX + vWidth/2) * scale = cRect.width / 2
+  // panY + (vMinY + vHeight/2) * scale = cRect.height / 2
+
+  const panX = (cRect.width / 2) - (vMinX + vWidth / 2) * scale;
+  const panY = (cRect.height / 2) - (vMinY + vHeight / 2) * scale;
 
   state.svgZoom = scale;
   state.svgPan  = { x: panX, y: panY };
