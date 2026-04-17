@@ -10,11 +10,12 @@ let _grid = null;
 let _axes = null;
 let _ground = null;
 let _controlsReady = false;
+let _envMap = null;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────────────────────────────────────────
-export function init3D() {
+export async function init3D() {
   const canvas = document.getElementById('canvas3d');
   if (!canvas) { console.error('[3D] Canvas not found'); return; }
 
@@ -49,6 +50,7 @@ export function init3D() {
   updateOrbitCamera();
 
   _setupLighting();
+  await _setupEnvironment();
 
   // Grid and axes
   _axes = new THREE.AxesHelper(20);
@@ -65,7 +67,27 @@ export function init3D() {
   console.log('[3D] Enhanced viewer initialised');
 }
 
+async function _setupEnvironment() {
+  try {
+    const loader = new THREE.TextureLoader();
+    const texture = await loader.loadAsync('https://cdn.needle.tools/static/hdris/canary_wharf_2k.pmrem.ktx2');
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    _envMap = texture;
+    state.scene.environment = _envMap;
+  } catch (e) {
+    console.warn('[3D] Failed to load HDRI environment map', e);
+  }
+}
+
 function _setupLighting() {
+
+
+
+// ... (rest of the file)
+
+// ... (rest of the file)
+
+// ... (rest of the file)
   state.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   state.scene.add(new THREE.HemisphereLight(0xddeeff, 0x664422, 0.6));
 
@@ -164,14 +186,14 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.3,
+    metalness: 0.4,
     roughness: 0.1,
     side:      THREE.FrontSide,
   });
 
   const innerMaterial = new THREE.MeshStandardMaterial({
-    color:     '#464647',
-    metalness: 0.,
+    color:     '#2d2d2d',
+    metalness: 0.2,
     roughness: 0.5,
     side:      THREE.BackSide,
   });
@@ -392,6 +414,10 @@ export function toggleAxes(visible) {
   if (_axes) _axes.visible = visible;
 }
 
-export function setAutoRotate(enabled) {
-  state.orbitControls.isAutoRotating = enabled;
+export function toggleEnvironment(enabled) {
+  if (state.mesh && state.mesh.children[0]) {
+    const outerMesh = state.mesh.children[0];
+    outerMesh.material.envMap = enabled ? _envMap : null;
+    outerMesh.material.needsUpdate = true;
+  }
 }

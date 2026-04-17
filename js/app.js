@@ -370,6 +370,167 @@ async function initApp() {
       }
     });
 
+    document.getElementById('envToggle').addEventListener('click', () => {
+      state.useEnvironment = !state.useEnvironment;
+      document.getElementById('envToggle').classList.toggle('active', state.useEnvironment);
+      viewer.toggleEnvironment(state.useEnvironment);
+    });
+
+    document.getElementById('colorInput').addEventListener('input', (e) => {
+      const hex = e.target.value;
+      const dot = document.getElementById('colorDot');
+      if (dot) dot.style.background = hex;
+      state.materialColor = parseInt(hex.slice(1), 16);
+      if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
+    });
+
+    // New 3D Navigation Overlay Listeners
+    document.querySelectorAll('.nav-btn-3d').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        if (!state.mesh) return;
+        
+        const box = new THREE.Box3().setFromObject(state.mesh);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // Reset orbit controls to allow nice camera positioning
+        state.orbitControls.panX = 0;
+        state.orbitControls.panY = 0;
+
+        // Calculate distance based on max dimension and FOV
+        const fovRad = (state.camera.fov * Math.PI) / 180;
+        const distance = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
+        state.orbitControls.distance = distance;
+
+        if (view === 'top') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = -Math.PI / 2 + 0.01;
+        } else if (view === 'front') {
+          state.orbitControls.yaw = Math.PI / 2;
+          state.orbitControls.pitch = 0;
+        } else if (view === 'sides') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = 0;
+        }
+        
+        viewer.updateOrbitCamera();
+      });
+    });
+
+    document.querySelectorAll('.color-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const hex = pill.dataset.color;
+        const input = document.getElementById('colorInput');
+        const dot = document.getElementById('colorDot');
+        if (input) input.value = hex;
+        if (dot) dot.style.background = hex;
+        state.materialColor = parseInt(hex.slice(1), 16);
+        if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
+      });
+    });
+
+    document.getElementById('toolkitsBtn').addEventListener('click', () => {
+      window.location.href = './dashboard.html';
+    });
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Log out?')) logoutUser();
+    });
+
+
+    document.getElementById('wireframeToggle').addEventListener('click', () => {
+      if (state.meshWireframe) {
+        state.meshWireframe.visible = !state.meshWireframe.visible;
+        document.getElementById('wireframeToggle').classList.toggle('active', state.meshWireframe.visible);
+      }
+    });
+
+    document.getElementById('envToggle').addEventListener('click', () => {
+      state.useEnvironment = !state.useEnvironment;
+      document.getElementById('envToggle').classList.toggle('active', state.useEnvironment);
+      
+      if (state.meshMaterial) {
+        // We need to update the outer mesh material
+        // In our implementation, state.mesh is a Group, and outerMesh is its first child
+        const outerMesh = state.mesh.children[0];
+        if (outerMesh && outerMesh.material) {
+          outerMesh.material.envMap = state.useEnvironment ? viewer._envMap : null;
+          outerMesh.material.needsUpdate = true;
+        }
+      }
+    });
+
+    document.getElementById('colorInput').addEventListener('input', (e) => {
+      const hex = e.target.value;
+      const dot = document.getElementById('colorDot');
+      if (dot) dot.style.background = hex;
+      state.materialColor = parseInt(hex.slice(1), 16);
+      if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
+    });
+
+    // New 3D Navigation Overlay Listeners
+    document.querySelectorAll('.nav-btn-3d').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        if (!state.mesh) return;
+        
+        const box = new THREE.Box3().setFromObject(state.mesh);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // Reset orbit controls to allow nice camera positioning
+        state.orbitControls.panX = 0;
+        state.orbitControls.panY = 0;
+
+        // Calculate distance based on max dimension and FOV
+        const fovRad = (state.camera.fov * Math.PI) / 180;
+        const distance = (maxDim / 2) / Math.tan(fovRad / 2) * 1.5;
+        state.orbitControls.distance = distance;
+
+        if (view === 'top') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = -Math.PI / 2 + 0.01;
+        } else if (view === 'front') {
+          state.orbitControls.yaw = Math.PI / 2;
+          state.orbitControls.pitch = 0;
+        } else if (view === 'sides') {
+          state.orbitControls.yaw = 0;
+          state.orbitControls.pitch = 0;
+        }
+        
+        viewer.updateOrbitCamera();
+      });
+    });
+
+    document.querySelectorAll('.color-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const hex = pill.dataset.color;
+        const input = document.getElementById('colorInput');
+        const dot = document.getElementById('colorDot');
+        if (input) input.value = hex;
+        if (dot) dot.style.background = hex;
+        state.materialColor = parseInt(hex.slice(1), 16);
+        if (state.meshMaterial) state.meshMaterial.color.setHex(state.materialColor);
+      });
+    });
+
+    document.getElementById('toolkitsBtn').addEventListener('click', () => {
+      window.location.href = './dashboard.html';
+    });
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (confirm('Log out?')) logoutUser();
+    });
+
+
+    document.getElementById('wireframeToggle').addEventListener('click', () => {
+      if (state.meshWireframe) {
+        state.meshWireframe.visible = !state.meshWireframe.visible;
+        document.getElementById('wireframeToggle').classList.toggle('active', state.meshWireframe.visible);
+      }
+    });
+
     document.getElementById('colorInput').addEventListener('input', (e) => {
       const hex = e.target.value;
       const dot = document.getElementById('colorDot');
