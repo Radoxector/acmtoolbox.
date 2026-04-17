@@ -16,10 +16,12 @@ export function showToast(msg, type = 'info') {
 // ─── Status stats ─────────────────────────────────────────────────────────
 export function updateStatus(data) {
   if (data.edges !== undefined) {
-    document.getElementById('stE').textContent = data.edges.length;
+    const el = document.getElementById('stE');
+    if (el) el.textContent = data.edges.length;
   }
   if (data.n_islands !== undefined) {
-    document.getElementById('stI').textContent = data.n_islands;
+    const el = document.getElementById('stI');
+    if (el) el.textContent = data.n_islands;
   }
 }
 
