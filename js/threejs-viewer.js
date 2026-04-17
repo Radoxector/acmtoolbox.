@@ -30,7 +30,7 @@ export async function init3D() {
   }
 
   state.scene = new THREE.Scene();
-  state.scene.fog = new THREE.FogExp2(0x808080, 0.0008);
+  // Removed fog to prevent interference with environment reflections
 
   const w = canvas.offsetWidth || 800;
   const h = canvas.offsetHeight || 600;
@@ -186,15 +186,16 @@ export function buildModel3D(vertices, faces) {
 
   state.meshMaterial = new THREE.MeshStandardMaterial({
     color:     state.materialColor,
-    metalness: 0.4,
-    roughness: 0.1,
+    metalness: 0.5,
+    roughness: 0.05,
+    envMapIntensity: 1.0,
     side:      THREE.FrontSide,
   });
 
   const innerMaterial = new THREE.MeshStandardMaterial({
-    color:     '#2d2d2d',
-    metalness: 0.2,
-    roughness: 0.5,
+    color:     '#1a1a1a',
+    metalness: 0.0,
+    roughness: 0.8,
     side:      THREE.BackSide,
   });
 
@@ -418,6 +419,7 @@ export function toggleEnvironment(enabled) {
   if (state.mesh && state.mesh.children[0]) {
     const outerMesh = state.mesh.children[0];
     outerMesh.material.envMap = enabled ? _envMap : null;
+    outerMesh.material.envMapIntensity = enabled ? 1.0 : 0.0;
     outerMesh.material.needsUpdate = true;
   }
 }
