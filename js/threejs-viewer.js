@@ -142,7 +142,7 @@ function _buildWireframeGeo(faces, vertices) {
 
 export function buildModel3D(vertices, faces) {
   // Dispose previous objects
-  [state.mesh, state.meshWireframe, state.bbPoints, state.meshGroup].forEach(obj => {
+  [state.mesh, state.meshWireframe, state.bbPoints].forEach(obj => {
     if (obj) {
       if (obj.geometry) obj.geometry.dispose();
       if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
@@ -162,57 +162,33 @@ export function buildModel3D(vertices, faces) {
   geo.computeBoundingBox();
   geo.computeBoundingSphere();
 
+  state.meshMaterial = new THREE.MeshStandardMaterial({
+    color:     state.materialColor,
+    metalness: 0.,
+    roughness: 0.1,
+    side:      THREE.DoubleSide,
+  });
+
   state.mesh = new THREE.Mesh(geo, state.meshMaterial);
   state.mesh.castShadow = state.mesh.receiveShadow = false;
 
-  // For double-sided rendering with different colors for inner/outer faces
-  // We create two materials: one for the front and one for the back.
-  // The most robust way for a single mesh is to use two meshes sharing the same geometry:
-  // one with side: BackSide and a dark material, and one with side: FrontSide and the main material.
-
-  const backMaterial = new THREE.MeshStandardMaterial({
-    color: 0x333333,
-    metalness: 0.1,
-    roughness: 0.8,
-    side: THREE.BackSide,
-  });
-
-  // Ensure we have a material to use for the front
-  const frontMaterial = state.meshMaterial ? state.meshMaterial.clone() : new THREE.MeshStandardMaterial({ color: 0xffffff });
-  frontMaterial.side = THREE.FrontSide;
-
-  const meshBack = new THREE.Mesh(geo, backMaterial);
-  const meshFront = new THREE.Mesh(geo, frontMaterial);
-  
-  meshBack.castShadow = meshBack.receiveShadow = false;
-  meshFront.castShadow = meshFront.receiveShadow = false;
-
-  state.mesh = meshFront; // We keep state.mesh pointing to the front one for logic/bounding box
-  state.meshGroup = new THREE.Group(); // We'll use a group to manage both
-  state.meshGroup.add(meshBack);
-  state.meshGroup.add(meshFront);
-
-  // Dispose previous group if it exists
-  // (Note: buildModel3D already disposes state.mesh, but state.meshGroup was added later)
-
-
   // Center the model at (0,0,0)
-  const box = new THREE.Box3().setFromObject(meshFront);
+  const box = new THREE.Box3().setFromObject(state.mesh);
   const center = box.getCenter(new THREE.Vector3());
-  state.meshGroup.position.set(-center.x, -center.y, -center.z);
-  state.scene.add(state.meshGroup);
+  state.mesh.position.set(-center.x, -center.y, -center.z);
+  state.scene.add(state.mesh);
 
   // Wireframe
   state.meshWireframe = new THREE.LineSegments(
     _buildWireframeGeo(faces, vertices),
     new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6, fog: false })
   );
-  state.meshWireframe.position.copy(state.meshGroup.position);
+  state.meshWireframe.position.copy(state.mesh.position);
   state.meshWireframe.visible = true;
   state.scene.add(state.meshWireframe);
 
   // Re‑compute bounding box after centering
-  const newBox = new THREE.Box3().setFromObject(state.meshGroup);
+  const newBox = new THREE.Box3().setFromObject(state.mesh);
 
   // Bounding box points (optional, used for UI)
   const bbGeo = new THREE.BufferGeometry();
