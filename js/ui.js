@@ -143,7 +143,7 @@ export function renderPreviewSVG(result) {
       if (edge_types[i] !== type) return;
       const [x1, y1] = verts2d[edge[0]];
       const [x2, y2] = verts2d[edge[1]];
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
     });
   };
 
@@ -172,7 +172,7 @@ export function renderDownloadSVG(result) {
       if (edge_types[i] !== type) return;
       const [x1, y1] = verts2d[edge[0]];
       const [x2, y2] = verts2d[edge[1]];
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round"/>`;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
     });
   };
 
