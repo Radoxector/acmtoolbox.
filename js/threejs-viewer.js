@@ -51,9 +51,7 @@ export function init3D() {
   _setupLighting();
 
   // Grid and axes
-  _axes = new THREE.AxesHelper(20);
-  _axes.visible = state.showAxes ?? true;
-  state.scene.add(_axes);
+  
 
   window.addEventListener('resize', _onResize);
   canvas.addEventListener('contextmenu', e => e.preventDefault());
