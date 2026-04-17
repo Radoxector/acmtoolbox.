@@ -142,7 +142,7 @@ function _buildWireframeGeo(faces, vertices) {
 
 export function buildModel3D(vertices, faces) {
   // Dispose previous objects
-  [state.mesh, state.meshWireframe, state.bbPoints].forEach(obj => {
+  [state.mesh, state.meshWireframe, state.bbPoints, state.meshGroup].forEach(obj => {
     if (obj) {
       if (obj.geometry) obj.geometry.dispose();
       if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
@@ -191,6 +191,10 @@ export function buildModel3D(vertices, faces) {
   state.meshGroup = new THREE.Group(); // We'll use a group to manage both
   state.meshGroup.add(meshBack);
   state.meshGroup.add(meshFront);
+
+  // Dispose previous group if it exists
+  // (Note: buildModel3D already disposes state.mesh, but state.meshGroup was added later)
+
 
   // Center the model at (0,0,0)
   const box = new THREE.Box3().setFromObject(meshFront);

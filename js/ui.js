@@ -5,10 +5,12 @@ import { state, EdgeType } from './state.js';
 // ─── Toast ────────────────────────────────────────────────────────────────
 export function showToast(msg, type = 'info') {
   const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.className = `toast show ${type}`;
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('show'), 3500);
+  if (toast) {
+    toast.textContent = msg;
+    toast.className = `toast show ${type}`;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 3500);
+  }
 }
 
 // ─── Status stats ─────────────────────────────────────────────────────────
